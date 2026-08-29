@@ -2550,14 +2550,14 @@ function renderTab8Body(){
   document.getElementById('t8catTable').innerHTML = t8catTreeTable(agg, hier);
 
   const recovPct = agg.recovTotal>0 ? (100*agg.recovDone/agg.recovTotal) : 0;
-  document.getElementById('t8recovBanner').innerHTML = `<div class="t8f-recov-banner">Nhóm KH kênh OFF, 3 tháng 5·6·7 <b>CHƯA mua</b> (${scopeLabel}): <b>${fmt(agg.recovTotal)} quầy</b> — sang T8 đã mua lại: <span class="t8f-recov-ok">✅ ${fmt(agg.recovDone)} quầy (phục hồi ${recovPct.toFixed(0)}%)</span> &nbsp; <span class="t8f-recov-warn">⚠️ còn ${fmt(agg.recovTotal-agg.recovDone)} quầy chưa mua</span></div>`;
+  document.getElementById('t8recovBanner').innerHTML = `<div class="t8f-recov-banner">Nhóm KH kênh OFF, 3 tháng 5·6·7 <b>CHƯA mua</b> (${scopeLabel}): <b>${fmt(agg.recovTotal)} quầy</b> — sang T8 đã mua lại: <span class="t8f-recov-ok">✅ ${fmt(agg.recovDone)} quầy (active lại ${recovPct.toFixed(0)}%)</span> &nbsp; <span class="t8f-recov-warn">⚠️ còn ${fmt(agg.recovTotal-agg.recovDone)} quầy chưa mua</span></div>`;
 
   const dashCol = ()=>'<span class="small">—</span>';
   const soCell = a => T8_PERIODS.map(p=>fmtTyNum(a.so[p]));
   const soDelta = a => t8fundArrow(a.so.t8-a.so.t7, true, fmtTyNum(Math.abs(a.so.t8-a.so.t7)));
   const asoOffCell = a => T8_PERIODS.map(p=>`${fmt(a.asoOffDa[p])}/${fmt(a.mcpOff)} <span class="small">(${a.mcpOff>0?(100*a.asoOffDa[p]/a.mcpOff).toFixed(1):0}%)</span>`);
   const asoOffDelta = a => t8fundArrow(a.asoOffPct.t8-a.asoOffPct.t7, true, Math.abs(a.asoOffPct.t8-a.asoOffPct.t7).toFixed(1)+'đ%');
-  const asoOffExtra = a => a.recovTotal>0 ? `${fmt(a.recovDone)}/${fmt(a.recovTotal)} <span class="small">(phục hồi ${(100*a.recovDone/a.recovTotal).toFixed(0)}%)</span>` : dashCol();
+  const asoOffExtra = a => a.recovTotal>0 ? `${fmt(a.recovDone)}/${fmt(a.recovTotal)} <span class="small">(active lại ${(100*a.recovDone/a.recovTotal).toFixed(0)}%)</span>` : dashCol();
   const asoOnCell = a => T8_PERIODS.map(p=>`${fmt(a.asoOnDa[p])}/${fmt(a.mcpOn)} <span class="small">(${a.mcpOn>0?(100*a.asoOnDa[p]/a.mcpOn).toFixed(1):0}%)</span>`);
   const asoOnDelta = a => t8fundArrow(a.asoOnPct.t8-a.asoOnPct.t7, true, Math.abs(a.asoOnPct.t8-a.asoOnPct.t7).toFixed(1)+'đ%');
   const lppcCell = a => T8_PERIODS.map(p=>a.lppc[p].toFixed(2));
