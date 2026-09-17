@@ -2650,7 +2650,7 @@ function t16NppAgg3(ddRows){
 // cay chung NPP(bam sổ)->SS(bam sổ)->DDKD(la) dung cho ca Bang1/2/3 - chi khac nhau rowCellsFn (chung
 // cho ca cap NPP/SS vi field ten giong het nhau) va ddkdCellsFn (rieng, vi Bang3 hien DDKD dang ✓/✗
 // thay vi dat/tong nhu SS/NPP).
-function t16Tree(tableKey, snap, nppAggFn, rowCellsFn, ddkdCellsFn){
+function t16Tree(tableKey, snap, nppAggFn, rowCellsFn, ddkdCellsFn, detailRowFn){
   const ssSorted = sortBySSOrder(snap.ss_list.slice(), s=>s.ss);
   const groups = t16GroupByNpp(ssSorted);
   let html = '';
@@ -2662,6 +2662,12 @@ function t16Tree(tableKey, snap, nppAggFn, rowCellsFn, ddkdCellsFn){
       html += `<tr class="rowclick ${tableKey}_ss_${i}" style="display:none" onclick="window.__t16ToggleSs('${tableKey}',${i},${j})">${ssIdTd(s.ss, s.n_tong, '<span id="'+tableKey+'_sarrow_'+i+'_'+j+'">▸</span> ')}${rowCellsFn(s)}</tr>`;
       snap.ddkd_list.filter(d=>d.ss===s.ss).forEach(d=>{
         html += `<tr class="${tableKey}_dd_${i}_${j} small" style="display:none"><td colspan="4" style="padding-left:40px">${d.ten} <span style="opacity:.65">(${d.pos})</span></td>${ddkdCellsFn(d)}</tr>`;
+        // mục209b: hang chi tiet tuy chon (chi Bang3 dung), cung class toggle nen an/hien theo dung
+        // hang cha (khong can sua logic __t16ToggleSs).
+        if(detailRowFn){
+          const extra = detailRowFn(d);
+          if(extra) html += `<tr class="${tableKey}_dd_${i}_${j}" style="display:none">${extra}</tr>`;
+        }
       });
     });
   });
