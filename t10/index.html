@@ -980,8 +980,22 @@ function t1KpiRow(rows, prog){
     <div class="kpi accent" style="border-left-color:#f59e0b"><div class="lbl">Tổng thưởng ước tính (tham khảo)</div><div class="val">${fmtVnd(thuong)}</div></div>
   </div>`;
 }
+// v56 (12/10): bảng chi tiết từng quầy + bảng tổng hợp: khi đã chọn 1 SS ở bộ lọc -> bỏ cột SS, cố định ĐDKD/Mã CH/Tên CH (cả trên điện thoại)
+function ensureT1SumStyle(){
+  if(document.getElementById('t1sumStyle')) return;
+  const st=document.createElement('style'); st.id='t1sumStyle';
+  st.textContent='table.t1sum td.c-dd,table.t1sum td.c-ten{white-space:normal;min-width:72px;max-width:96px;line-height:1.25;font-size:12px}table.t1sum td.c-ma{font-size:11.5px}@media(min-width:760px){table.t1sum td.c-dd,table.t1sum td.c-ten{white-space:nowrap;max-width:none;min-width:0;font-size:13px}}';
+  document.head.appendChild(st);
+}
+function chLeadTh(hide){ ensureT1SumStyle(); return hide ? '<th>ĐDKD</th><th>Mã CH</th><th>Tên CH</th><th class="small">Viếng thăm</th>' : '<th class="small">Viếng thăm</th><th>SS</th><th>ĐDKD</th><th>Mã CH</th><th>Tên CH</th>'; }
+function chLeadTd(hide, r){
+  const vt = `<td class="small">${r.vt||''}</td>`, dd = `<td class="small c-dd">${r.ddkd||'—'}</td>`, ma = `<td class="c-ma">${r.ma}</td>`, ten = `<td class="c-ten">${r.ten||'—'}</td>`;
+  return hide ? dd+ma+ten+vt : vt + `<td class="small">${r.ss||'—'}</td>` + dd + ma + ten;
+}
+function chTblAttr(hide){ return hide ? ' class="tbl-compact t1sum" data-stk="3"' : ' class="tbl-compact"'; }
 function t1ChTable(rows, prog){
   const gift = t1IsGift(prog), baseLabel = t1BaselineLabel(prog);
+  const hideSS = !!t1state.ss && !(t1state.q && t1state.q.trim());
   const stLbl = gift ? T1_ST_LABEL_GIFT : T1_ST_LABEL;
   const sorted = rows.slice().sort((a,b)=> (a.dat_gate===b.dat_gate?0:(a.dat_gate?-1:1)) || ((gift?(b.max_don-a.max_don):(b.mtd-a.mtd))));
   const CAP = 1000;
@@ -990,22 +1004,22 @@ function t1ChTable(rows, prog){
   const empty = `<tr><td colspan="${gift?11:11}" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
   let head, body;
   if(gift){
-    head = '<th class="small">Viếng thăm</th><th>SS</th><th>ĐDKD</th><th>Mã CH</th><th>Tên CH</th><th>DS Nhất Ca MTD</th><th>Số đơn</th><th>Đơn lớn nhất</th><th>Trạng thái</th><th>Quà (chai Nhị Ca)</th><th>Đã tặng (hệ thống)</th>';
+    head = `${chLeadTh(hideSS)}<th>DS Nhất Ca MTD</th><th>Số đơn</th><th>Đơn lớn nhất</th><th>Trạng thái</th><th>Quà (chai Nhị Ca)</th><th>Đã tặng (hệ thống)</th>`;
     body = capped.map(r=>{
       const st = t1St(r);
       return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],['DS Nhất Ca MTD',fmt(r.mtd)],['Số đơn Nhất Ca',fmt(r.so_don)],['Đơn lớn nhất',fmt(r.max_don)],['Trạng thái',stLbl[st],T1_ST_COLOR[st]],['Quà',r.qua?'1 chai Nhị Ca 500ml':'—'],['Đã tặng (Raw_data)',fmt(r.da_tang)+' chai']]))}>
-      <td class="small">${r.vt||''}</td><td class="small">${r.ss||'—'}</td><td class="small">${r.ddkd||'—'}</td><td>${r.ma}</td><td>${r.ten||'—'}</td><td>${fmt(r.mtd)}</td><td>${fmt(r.so_don)}</td><td>${fmt(r.max_don)}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td style="font-weight:700">${r.qua?'1':'—'}</td><td>${r.da_tang?fmt(r.da_tang):'—'}</td></tr>`;
+      ${chLeadTd(hideSS, r)}<td>${fmt(r.mtd)}</td><td>${fmt(r.so_don)}</td><td>${fmt(r.max_don)}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td style="font-weight:700">${r.qua?'1':'—'}</td><td>${r.da_tang?fmt(r.da_tang):'—'}</td></tr>`;
     }).join('') || empty;
   } else {
-    head = `<th class="small">Viếng thăm</th><th>SS</th><th>ĐDKD</th><th>Mã CH</th><th>Tên CH</th><th>${baseLabel}</th><th>MTD T10</th><th>%TH</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${prog==='bev'?'<th>ĐK Dnl thùng đá</th>':''}`;
+    head = `${chLeadTh(hideSS)}<th>${baseLabel}</th><th>MTD T10</th><th>%TH</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${prog==='bev'?'<th>ĐK Dnl thùng đá</th>':''}`;
     body = capped.map(r=>{
       const base = t1BaselineVal(r), st = t1St(r);
       const pctTxt = r.pct!=null ? (r.pct*100).toFixed(1)+'%' : '—';
       return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],[baseLabel,fmt(base)],['MTD T10',fmt(r.mtd)],['%TH',pctTxt],['Trạng thái', stLbl[st], T1_ST_COLOR[st]],['Thưởng (tham khảo)',fmtVnd(r.thuong)]].concat(prog==='bev'?[['ĐK Dnl thùng đá',r.dnl_da?'Đã đăng ký':'—',r.dnl_da?'xanh':'']]:[])))}>
-      <td class="small">${r.vt||''}</td><td class="small">${r.ss||'—'}</td><td class="small">${r.ddkd||'—'}</td><td>${r.ma}</td><td>${r.ten||'—'}</td><td>${fmt(base)}</td><td>${fmt(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${prog==='bev'?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
+      ${chLeadTd(hideSS, r)}<td>${fmt(base)}</td><td>${fmt(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${prog==='bev'?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
     }).join('') || empty.replace('colspan="11"','colspan="10"');
   }
-  return `<div class="tbl-scroll" style="max-height:65vh"><table class="tbl-compact"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
+  return `<div class="tbl-scroll" style="max-height:65vh"><table${chTblAttr(hideSS)}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
 }
 function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
   const gift = t1IsGift(prog);
@@ -1103,6 +1117,8 @@ function t1SumCells(p, r){
   return `<td>${fmt(Math.round(ct||0))}</td><td style="${st}">${fmt(Math.round(mtd||0))}</td><td style="${st}">${pTxt}</td><td${dat?' style="font-weight:700"':''}>${last}</td>` +
     (p==='bev' ? `<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>` : '');
 }
+// v54 (12/10): CT New ASO Gia vị <2tr (ít CH tham gia) chuyển xuống CUỐI bảng tổng hợp
+const T1_SUM_ORDER = T1_PROG_ORDER.filter(p=>p!=='newaso').concat(T1_PROG_ORDER.filter(p=>p==='newaso'));
 function t1SummaryCard(){
   const f = t1state;
   let arr = t1SumData();
@@ -1114,23 +1130,25 @@ function t1SummaryCard(){
   if(t1SumOnly) arr = arr.filter(e=>e.nDat>0);
   arr = arr.slice().sort((a,b)=> (b.nDat-a.nDat) || (b.thuong-a.thuong) || String(a.ss).localeCompare(String(b.ss),'vi') || String(a.ddkd).localeCompare(String(b.ddkd),'vi'));
   const CAP = 500, shown = arr.slice(0, CAP);
-  const grp = T1_PROG_ORDER.map(p=>`<th colspan="${p==='bev'?5:4}" style="text-align:center;border-left:2px solid #fff">${T1_SUM_LABEL[p]}</th>`).join('');
-  const sub = T1_PROG_ORDER.map(p=>{
+  const hideSS = !!f.ss && !searching;   // v55: đã chọn 1 SS ở bộ lọc -> bỏ cột SS (cả bảng cùng 1 SS), cố định tới Tên CH ngay cả trên điện thoại
+  ensureT1SumStyle();
+  const grp = T1_SUM_ORDER.map(p=>`<th colspan="${p==='bev'?5:4}" style="text-align:center;border-left:2px solid #fff">${T1_SUM_LABEL[p]}</th>`).join('');
+  const sub = T1_SUM_ORDER.map(p=>{
     const ctl = T1_PROGS_GROWTH.includes(p) ? 'RR T6-7-8' : (t1IsGift(p) ? 'Mốc/đơn' : 'Mốc');
     const mtdl = t1IsGift(p) ? 'Đơn lớn nhất' : 'MTD';
     return `<th style="border-left:2px solid #fff">CT (${ctl})</th><th>${mtdl}</th><th>%TH</th><th>${t1IsGift(p)?'Quà':'Thưởng'}</th>${p==='bev'?'<th>ĐK Dnl thùng đá</th>':''}`;
   }).join('');
-  const body = shown.map(e=>`<tr><td class="small">${e.ss||'—'}</td><td class="small">${e.ddkd||'—'}</td><td>${e.ma}</td><td>${e.ten||'—'}</td><td style="text-align:center;font-weight:700">${e.nDat}/${e.nProg}</td>${T1_PROG_ORDER.map(p=>t1SumCells(p, e.p[p])).join('')}</tr>`).join('')
-    || `<tr><td colspan="${5+T1_PROG_ORDER.length*4+1}" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
+  const body = shown.map(e=>`<tr>${hideSS?'':`<td class="small">${e.ss||'—'}</td>`}<td class="small c-dd">${e.ddkd||'—'}</td><td class="c-ma">${e.ma}</td><td class="c-ten">${e.ten||'—'}</td><td style="text-align:center;font-weight:700">${e.nDat}/${e.nProg}</td>${T1_SUM_ORDER.map(p=>t1SumCells(p, e.p[p])).join('')}</tr>`).join('')
+    || `<tr><td colspan="${(hideSS?4:5)+T1_PROG_ORDER.length*4+1}" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
   const note = arr.length>CAP ? `<div class="small" style="margin:6px 2px;color:var(--sub)">Đang hiện ${CAP}/${fmt(arr.length)} quầy (sắp theo số CT đã đạt giảm dần, rồi thưởng) — chọn SS/ĐDKD hoặc tìm CH ở bộ lọc phía trên để thu hẹp.</div>` : '';
   const chip = (v,label)=>`<button class="chip${t1SumOnly===v?' active':''}" onclick="window.__t1SumOnly(${v})">${label}</button>`;
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-      <h3 style="font-size:14px;margin:0">📋 Tổng hợp các CT gắn kết theo từng CH <span class="small" style="color:var(--sub);font-weight:400">(${fmt(arr.length)}${t1SumOnly?'/'+fmt(total):''} quầy · theo bộ lọc SS/ĐDKD/thứ viếng thăm phía trên)</span></h3>
+      <h3 style="font-size:14px;margin:0">📋 Tổng hợp các CT gắn kết theo từng CH <span class="small" style="color:var(--sub);font-weight:400">(${fmt(arr.length)}${t1SumOnly?'/'+fmt(total):''} quầy${hideSS?' · SS: '+f.ss:''} · theo bộ lọc SS/ĐDKD/thứ viếng thăm phía trên)</span></h3>
       <div class="chips" style="margin:0">${chip(false,'Tất cả CH ('+fmt(total)+')')}${chip(true,'CH đạt ≥1 CT')}</div>
     </div>
     <div class="small" style="margin-bottom:6px;color:var(--sub)">Mỗi quầy một dòng: các CT mà quầy đó thuộc phạm vi (CT = RR T6-7-8 hoặc mốc, MTD, %TH, thưởng tham khảo). "Đạt" = số CT đã đạt gate / số CT quầy thuộc phạm vi. Ô "không thuộc CT" = quầy không nằm trong danh sách CT đó.</div>
-    <div class="tbl-scroll" style="max-height:65vh"><table class="tbl-compact"><thead><tr><th rowspan="2">SS</th><th rowspan="2">ĐDKD</th><th rowspan="2">Mã CH</th><th rowspan="2">Tên CH</th><th rowspan="2">Đạt</th>${grp}</tr><tr>${sub}</tr></thead><tbody>${body}</tbody></table></div>${note}
+    <div class="tbl-scroll" style="max-height:65vh"><table class="tbl-compact t1sum"${hideSS?' data-stk="3"':''}><thead><tr>${hideSS?'':'<th rowspan="2">SS</th>'}<th rowspan="2">ĐDKD</th><th rowspan="2">Mã CH</th><th rowspan="2">Tên CH</th><th rowspan="2">Đạt</th>${grp}</tr><tr>${sub}</tr></thead><tbody>${body}</tbody></table></div>${note}
   </div>`;
 }
 function renderTab1Body(){
@@ -3538,6 +3556,7 @@ function t14KpiRow(combo, rows){
 
 function t14ChTable(combo, rows){
   const m = t14Meta(combo);
+  const hideSS = !!t14state.ss && !(t14state.q && t14state.q.trim());
   const sorted = rows.slice().sort((a,b)=>b.so_don_dat-a.so_don_dat);
   const CAP = 1000;
   const capped = sorted.slice(0, CAP);
@@ -3546,9 +3565,9 @@ function t14ChTable(combo, rows){
   const rows_html = capped.map(r=>{
     const rewardVal = m.reward_kind==='tien' ? fmtVnd(r.thuong_tien||0) : fmt(r.qua_uoc_tinh||0);
     return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],['Viếng thăm',r.vt||'—'],['Số đơn đạt',fmt(r.so_don_dat)],[rewardHead, rewardVal]]))}>
-      <td class="small">${r.vt||''}</td><td class="small">${r.ss||'—'}</td><td class="small">${r.ddkd||'—'}</td><td>${r.ma}</td><td>${r.ten||'—'}</td><td>${fmt(r.so_don_dat)}</td><td>${rewardVal}</td></tr>`;
+      ${chLeadTd(hideSS, r)}<td>${fmt(r.so_don_dat)}</td><td>${rewardVal}</td></tr>`;
   }).join('') || `<tr><td colspan="7" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
-  return `<div class="tbl-scroll" style="max-height:65vh"><table class="tbl-compact"><thead><tr><th class="small">Viếng thăm</th><th>SS</th><th>ĐDKD</th><th>Mã CH</th><th>Tên CH</th><th>Số đơn đạt</th><th>${rewardHead}</th></tr></thead><tbody>${rows_html}</tbody></table></div>${note}`;
+  return `<div class="tbl-scroll" style="max-height:65vh"><table${chTblAttr(hideSS)}><thead><tr>${chLeadTh(hideSS)}<th>Số đơn đạt</th><th>${rewardHead}</th></tr></thead><tbody>${rows_html}</tbody></table></div>${note}`;
 }
 function t14AggTable(rows, key, combo, firstTh, clickKey){
   const m = t14Meta(combo), tien = m.reward_kind==='tien';
