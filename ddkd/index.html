@@ -3846,8 +3846,13 @@ function t16NppAgg2(ddRows){
   };
 }
 function t16AvgGap(arr){ const vals=arr.map(d=>d.gap_last2_min).filter(v=>v!=null); return vals.length? Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*10)/10 : null; }
+// v68 (16/10): 2 cot dem so CH sai GPS (>gps_sai_m) va so CH check out >=2 lan trong NGAY dang xem
+function t16CntGps(d){ return (d.visits||[]).filter(t16VisitGpsBad).length; }
+function t16CntLan(d){ return (d.visits||[]).filter(t16VisitMulti).length; }
+function t16GpsLanCells(g,l){ const f=(n)=>n>0?`<b style="color:#d93025">${fmt(n)}</b>`:'<span style="opacity:.5">0</span>'; return `<td>${f(g)}</td><td>${f(l)}</td>`; }
 function t16NppAgg3(ddRows){
   return {
+    n_ch_gps: ddRows.reduce((a,d)=>a+t16CntGps(d),0), n_ch_lan: ddRows.reduce((a,d)=>a+t16CntLan(d),0),
     n_tong: ddRows.length,
     n_checkin_ddkd_dat: t16CountTrue(ddRows,'checkin_dat_dkd'), n_order_ddkd_dat: t16CountTrue(ddRows,'order_dat_dkd'),
     n_vt_dat5_ngay: t16Sum(ddRows,'n_vt_dat5_ngay'), n_vt_ngan_ngay: t16Sum(ddRows,'n_vt_ngan_ngay'),
@@ -3908,7 +3913,7 @@ window.__t16ToggleSs = function(tbl, i, j){
 // NPP/SS (headcount dat/tong) nen tach 2 ham rieng (t16Cells3Agg cho NPP/SS/Tong, t16Cells3Leaf cho DDKD).
 function t16Cells1(x){ return `<td>${fmt(x.kh_cutoff)}</td><td>${fmt(x.th_cutoff)}</td><td>${pctc(t16Band(x.pct_cutoff,100,90,80),x.pct_cutoff+'%')}</td><td>${fmt(x.th_t1)}</td><td>${t16pct(x.pct_t1)}</td><td>${fmt(x.th_t2)}</td><td>${t16pct(x.pct_t2)}</td><td>${fmt(x.kh_vt)}</td><td>${fmt(x.th_vt)}</td><td>${pctc(t16Band(x.pct_th_vt,100,90,80),x.pct_th_vt+'%')}</td><td>${t16Trend(x.xu_huong)}</td>`; }
 function t16Cells2(x){ return `<td>${fmt(x.pc_cutoff)}</td><td>${pctc(t16Band(x.pct_pc_vt_cutoff,100,80,60),x.pct_pc_vt_cutoff+'%')}</td><td>${fmt(x.pc_t1)}</td><td>${t16pct(x.pct_pc_vt_t1)}</td><td>${fmt(x.pc_t2)}</td><td>${t16pct(x.pct_pc_vt_t2)}</td><td>${fmt(x.pc)}</td><td>${pctc(t16Band(x.pct_pc_vt,100,80,60),x.pct_pc_vt+'%')}</td><td>${fmt(x.pc_trai_tuyen_cutoff)}</td><td>${t16pct(x.pct_pctt_cutoff)}</td><td>${fmt(x.pc_trai_tuyen)}</td><td>${fmt(x.pc_tt_ddkd)}</td><td>${fmt(x.pc_tt_r)}</td><td>${t16pct(x.pct_pctt_luyke)}</td>`; }
-function t16Cells3Agg(x){ return `<td>${fmt(x.n_checkin_ddkd_dat)}/${fmt(x.n_tong)}</td><td>${fmt(x.n_order_ddkd_dat)}/${fmt(x.n_tong)}</td><td>${fmt(x.n_vt_dat5_ngay)}</td><td>${fmt(x.n_vt_ngan_ngay)}</td><td>${fmt(x.n_vt_dat5)}</td><td>${fmt(x.n_vt_ngan)}</td><td>${fmt(x.n_checkout_ddkd_dat)}/${fmt(x.n_tong)}</td><td>${x.avg_gap_last2_min==null?'—':x.avg_gap_last2_min+' phút'}${x.n_co_gap!=null?` <span class="small" style="opacity:.65">(${fmt(x.n_co_gap)} ĐDKD)</span>`:''}</td>`; }
+function t16Cells3Agg(x){ return `<td>${fmt(x.n_checkin_ddkd_dat)}/${fmt(x.n_tong)}</td><td>${fmt(x.n_order_ddkd_dat)}/${fmt(x.n_tong)}</td><td>${fmt(x.n_vt_dat5_ngay)}</td><td>${fmt(x.n_vt_ngan_ngay)}</td><td>${fmt(x.n_vt_dat5)}</td><td>${fmt(x.n_vt_ngan)}</td><td>${fmt(x.n_checkout_ddkd_dat)}/${fmt(x.n_tong)}</td>${t16GpsLanCells(x.n_ch_gps||0,x.n_ch_lan||0)}<td>${x.avg_gap_last2_min==null?'—':x.avg_gap_last2_min+' phút'}${x.n_co_gap!=null?` <span class="small" style="opacity:.65">(${fmt(x.n_co_gap)} ĐDKD)</span>`:''}</td>`; }
 function t16DatBadge(ok){ return ok ? '<span class="pctc xanh">✓ Đạt</span>' : '<span class="pctc do">✗ Chưa đạt</span>'; }
 // mục209 (17/09/2026): 2 cot moi "CH check out sau 16h30" + "khoang cach CH check out cuoi/lien ke" -
 // khi bat checkbox t16ShowGioCuoi (window.__t16ToggleGioCuoi), 2 o nay o CAP DDKD (la cay) hien THEM
@@ -3925,7 +3930,7 @@ function t16VisitGpsBad(v){ return v.dist_m!=null && v.dist_m>KLBH.meta.gps_sai_
 function t16VisitMulti(v){ return (v.n_lan||1)>=2; }
 function t16CheckoutCell(d){ return `<td>${t16DatBadge(d.checkout_dat_dkd)}</td>`; }
 function t16GapCell(d){ return `<td>${d.gap_last2_min==null?'—':fmt(d.gap_last2_min)+' phút'}</td>`; }
-function t16Cells3Leaf(d){ return `<td>${t16DatBadge(d.checkin_dat_dkd)}</td><td>${t16DatBadge(d.order_dat_dkd)}</td><td>${fmt(d.n_vt_dat5_ngay)}</td><td>${fmt(d.n_vt_ngan_ngay)}</td><td>${fmt(d.n_vt_dat5)}</td><td>${fmt(d.n_vt_ngan)}</td>${t16CheckoutCell(d)}${t16GapCell(d)}`; }
+function t16Cells3Leaf(d){ return `<td>${t16DatBadge(d.checkin_dat_dkd)}</td><td>${t16DatBadge(d.order_dat_dkd)}</td><td>${fmt(d.n_vt_dat5_ngay)}</td><td>${fmt(d.n_vt_ngan_ngay)}</td><td>${fmt(d.n_vt_dat5)}</td><td>${fmt(d.n_vt_ngan)}</td>${t16CheckoutCell(d)}${t16GpsLanCells(t16CntGps(d),t16CntLan(d))}${t16GapCell(d)}`; }
 // mục209b (17/09/2026, theo yeu cau user xem lai anh chup): thay vi chi hien chi tiet CH check out
 // CUOI CUNG + 1 CH lien ke, khi bat checkbox se hien 1 hang rieng liet ke DU moi CH ma DDKD do da
 // vieng tham trong dung ngay dang xem (khong luy ke), sap theo gio checkin, kem checkin/checkout/so
@@ -3945,14 +3950,14 @@ function t16VisitDetailRow(d){
   const fltOn = t16FltGps || t16FltLan;
   const visits = fltOn ? visitsAll.filter(v=> (t16FltGps && t16VisitGpsBad(v)) || (t16FltLan && t16VisitMulti(v))) : visitsAll;
   if(!visitsAll.length){
-    return `<td colspan="12" class="small" style="padding-left:40px;opacity:.7">Không có lượt viếng thăm nào trong ngày này.</td>`;
+    return `<td colspan="14" class="small" style="padding-left:40px;opacity:.7">Không có lượt viếng thăm nào trong ngày này.</td>`;
   }
   if(!visits.length){
-    return `<td colspan="12" class="small" style="padding-left:40px;opacity:.7">ĐDKD này không có CH nào khớp bộ lọc đang chọn (tổng ${fmt(visitsAll.length)} CH ghé trong ngày).</td>`;
+    return `<td colspan="14" class="small" style="padding-left:40px;opacity:.7">ĐDKD này không có CH nào khớp bộ lọc đang chọn (tổng ${fmt(visitsAll.length)} CH ghé trong ngày).</td>`;
   }
   const rows = visits.map((v,idx)=>`<tr><td>${idx+1}</td><td>${v.ch}</td><td>${v.l1||'—'}</td><td>${v.mbs?'Hội viên MBS · ≥'+v.min_req+'′':'CH còn lại · ≥'+v.min_req+'′'}</td><td>${v.checkin_str}</td><td>${v.checkout_str}</td><td${v.canh_bao?' style="color:#d93025;font-weight:700"':''}>${fmt(v.duration_min)}'</td><td${(v.dist_m!=null&&v.dist_m>KLBH.meta.gps_sai_m)?' style="color:#d93025;font-weight:700"':''}>${t16Dist(v.dist_m)}</td><td>${v.qr?'<span class="pctc xanh">Có</span>':'<span class="pctc do">Không</span>'}</td><td style="white-space:nowrap">${v.tinh_3d===false?'<span style="opacity:.6">— Kênh ON, không xét 4Đ</span>':'Lịch '+t16Mark(true)+' · KH '+t16Mark(v.gps_ok)+' · TG '+t16Mark(v.tg_ok)+' · KC '+t16Mark(v.kc_ok)+' '+(v.dat_3d?'<span class="pctc xanh">Đạt 4Đ</span>':'<span class="pctc do">Chưa đạt</span>')}</td><td>${v.canh_bao?'<span class="pctc do">⚠ Cảnh báo</span>':''}</td><td>${v.is_last_checkout?t16VisitFlag(d.checkout_dat_dkd,'Sau 16:30','Trước 16:30'):''}</td><td style="text-align:center;white-space:nowrap">${(v.n_lan||1)>=2?'<span class="pctc do">✗ '+v.n_lan+' lần</span>':'1'}</td></tr>`).join('');
   const nNhieuLan = visits.filter(v=>(v.n_lan||1)>=2).length;
-  return `<td colspan="12" style="padding-left:40px">
+  return `<td colspan="14" style="padding-left:40px">
     <div class="small" style="font-weight:700;margin-bottom:4px">🕒 Hành trình viếng thăm trong ngày — ${fmt(visits.length)}${fltOn?'/'+fmt(visitsAll.length):''} CH${fltOn?' khớp bộ lọc':''}${nNhieuLan?` · <span style="color:#d93025">${fmt(nNhieuLan)} CH ghé ≥2 lần</span>`:''}:</div>
     <table class="tbl-compact" style="width:auto;min-width:680px"><thead><tr><th>#</th><th>Tên CH</th><th>LH CH (L1)</th><th>Nhóm CH · chuẩn VT</th><th>Checkin</th><th>Checkout</th><th>Số phút</th><th>Khoảng cách GPS</th><th>QR Visit</th><th>4Đ (Lịch · Khách hàng · Thời gian · Khoảng cách)</th><th>Cảnh báo</th><th>CH check out</th><th>Số lần check out</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="small" style="opacity:.65;margin-top:4px">Cảnh báo: CHỈ khi viếng thăm chưa đủ thời gian tối thiểu (&lt;${KLBH.meta.vt_ngan_mbs_phut} phút với CH hội viên MBS, &lt;${KLBH.meta.vt_ngan_max_phut} phút với CH còn lại; 0 phút = chưa có checkout cũng tính chưa đủ) · 4Đ (chỉ xét CH kênh OFF, theo CV KPI lương T10): Lịch = viếng thăm đúng tuyến MCP · KH = đúng khách hàng (có quét QR Visit khi viếng thăm) · TG = đủ thời gian tối thiểu · KC = đúng khoảng cách (checkin cách quầy ≤${KLBH.meta.gps_sai_m}m) — cả 4 ✓ mới là đạt 4Đ (không quét QR hoặc checkin xa quầy không gây Cảnh báo, nhưng làm CH không đạt 4Đ; cột Khoảng cách GPS chữ đỏ khi &gt;${KLBH.meta.gps_sai_m}m) · Số lần check out: số lần ĐDKD check in/check out tại CH đó trong ngày (theo cột Số lần viếng thăm và Ghi chú "lần N" của file Lịch sử viếng thăm) — ghé ≥2 lần/ngày hiện ✗ đỏ (CH bán xong lại bổ sung đơn → ĐDKD vào check in/out lần 2) · CH check out: chỉ đánh dấu ở CH checkout CUỐI CÙNG trong ngày — xanh nếu từ 16:30 trở đi, đỏ nếu trước 16:30.</div>
@@ -4006,7 +4011,9 @@ function t16Section3Table(){
   const snap = t16Snap(), t = snap.tong, m = KLBH.meta;
   let t16NGps = 0, t16NLan = 0;
   (snap.ddkd_list||[]).forEach(dd=>(dd.visits||[]).forEach(v=>{ if(t16VisitGpsBad(v)) t16NGps++; if(t16VisitMulti(v)) t16NLan++; }));
-  const F = topfOn('t16b3'), fr = F ? t16FlatRows('t16b3', snap, d=>d.pct_gio_giac, t16Cells3Leaf, 12, t16VisitDetailRow) : null;
+  (snap.ss_list||[]).forEach(sx=>{ const dd=(snap.ddkd_list||[]).filter(d=>d.ss===sx.ss); sx.n_ch_gps=dd.reduce((a,d)=>a+t16CntGps(d),0); sx.n_ch_lan=dd.reduce((a,d)=>a+t16CntLan(d),0); });
+  const tG = t16NGps, tL = t16NLan;
+  const F = topfOn('t16b3'), fr = F ? t16FlatRows('t16b3', snap, d=>d.pct_gio_giac, t16Cells3Leaf, 14, t16VisitDetailRow) : null;
   let html = `<div class="card">${topfHead('3. Kỷ luật giờ đầu-cuối ngày'+(F?' — theo ĐDKD':''), 't16b3', ()=>renderTab16())}
   <div class="small" style="margin-bottom:8px">Checkin quầy ĐẦU TIÊN trong ngày phải ≤ <b>${m.checkin_cutoff}</b> · Đơn hàng thành công ĐẦU TIÊN trong ngày phải tạo ≤ <b>${m.order_cutoff}</b> · Checkout quầy CUỐI CÙNG trong ngày phải ≥ <b>${m.checkout_cutoff}</b> (check out trước ${m.checkout_cutoff} là vi phạm) — các cột KHÔNG ghi LK đếm CỦA CHÍNH NGÀY ĐANG XEM (<b>${snap.ngay_cutoff}</b>, không LK) · VT đủ giờ / VT ngắn = số LƯỢT viếng thăm đạt / chưa đạt thời lượng tối thiểu (<b>${m.vt_ngan_mbs_phut} phút</b> với CH tham gia Hội viên MBS, <b>${m.vt_ngan_max_phut} phút</b> với CH còn lại — tính từ lúc bắt đầu đến kết thúc viếng thăm), các cột ghi LK tính từ đầu tháng đến ${snap.ngay_cutoff} · Khoảng cách CH cuối/liền kề = chênh lệch giờ check out giữa 2 lượt viếng thăm cuối cùng trong ngày (chỉ mang tính quan sát, chưa tính vào xếp loại vi phạm) · Bấm ▸ để sổ xuống NPP → SS → ĐDKD</div>
   <div class="kpi-row">
@@ -4024,8 +4031,8 @@ function t16Section3Table(){
     </label>
     <div class="chips" style="margin:0 0 0 auto"><button class="chip${t16FltGps?' active':''}" onclick="window.__t16FltGps(${t16FltGps?'false':'true'})">📍 CH sai GPS &gt;${m.gps_sai_m}m (${fmt(t16NGps)})</button><button class="chip${t16FltLan?' active':''}" onclick="window.__t16FltLan(${t16FltLan?'false':'true'})">🔁 CH check out ≥2 lần (${fmt(t16NLan)})</button></div>
   </div>
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>Checkin ≤${m.checkin_cutoff}</th><th>Đơn đầu ≤${m.order_cutoff}</th><th>VT đủ giờ</th><th>VT ngắn</th><th>VT đủ giờ (LK)</th><th>VT ngắn (LK)</th><th>Checkout ≥${m.checkout_cutoff}</th><th>KC CH cuối/liền kề</th></tr></thead><tbody>
-  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}<td>${fmt(t.n_checkin_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_order_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_vt_dat5_ngay)}</td><td>${fmt(t.n_vt_ngan_ngay)}</td><td>${fmt(t.n_vt_dat5)}</td><td>${fmt(t.n_vt_ngan)}</td><td>${fmt(t.n_checkout_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${t.avg_gap_last2_min==null?'—':t.avg_gap_last2_min+' phút'} <span class="small" style="opacity:.65">(${fmt(t.n_co_gap)} ĐDKD)</span></td></tr>
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>Checkin ≤${m.checkin_cutoff}</th><th>Đơn đầu ≤${m.order_cutoff}</th><th>VT đủ giờ</th><th>VT ngắn</th><th>VT đủ giờ (LK)</th><th>VT ngắn (LK)</th><th>Checkout ≥${m.checkout_cutoff}</th><th>CH sai GPS &gt;${m.gps_sai_m}m</th><th>CH check out ≥2 lần</th><th>KC CH cuối/liền kề</th></tr></thead><tbody>
+  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}<td>${fmt(t.n_checkin_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_order_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_vt_dat5_ngay)}</td><td>${fmt(t.n_vt_ngan_ngay)}</td><td>${fmt(t.n_vt_dat5)}</td><td>${fmt(t.n_vt_ngan)}</td><td>${fmt(t.n_checkout_ddkd_dat)}/${fmt(t.n_tong)}</td>${t16GpsLanCells(tG,tL)}<td>${t.avg_gap_last2_min==null?'—':t.avg_gap_last2_min+' phút'} <span class="small" style="opacity:.65">(${fmt(t.n_co_gap)} ĐDKD)</span></td></tr>
   ${F ? fr.html : t16Tree('t16b3', snap, t16NppAgg3, t16Cells3Agg, t16Cells3Leaf, t16VisitDetailRow)}
   </tbody></table></div>${F ? topfNote('t16b3', fr.n, '%tuân thủ giờ đầu ngày') : ''}</div>`;
   return html;
