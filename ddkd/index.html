@@ -629,13 +629,19 @@ function topfKpiBar(key, defs){
   var cur = topfKpiSel(key, defs), curId = cur ? cur.id : null;
   return '<div class="topf-kpibar"><span class="topf-kpilbl">☑ Tick 1 mục KPI để chỉ xem đúng mục đó:</span>'+defs.map(function(k){
     return '<label class="topf-chip kpi'+(k.id===curId?' on':'')+'"><input type="checkbox"'+(k.id===curId?' checked':'')+' onchange="window.__topfKpi(\''+key+'\',\''+k.id+'\')"> '+k.label+'</label>'; }).join('')
-    +'<span class="topf-kpihint">'+(cur ? 'Đang chỉ hiện mục <b>'+cur.label+'</b> — bỏ tick để xem tất cả các mục' : 'Chưa tick mục nào: hiện tất cả cột, xếp hạng theo '+defs[0].label)+'</span></div>';
+    +'<span class="topf-kpihint">'+(cur ? 'Đang chỉ hiện mục <b>'+cur.label+'</b> — bỏ tick để xem tất cả các mục' : 'Chưa tick mục nào: hiện tất cả cột, xếp hạng theo '+(defs.dflt||defs[0].label))+'</span></div>';
 }
 window.__topfKpi = function(key, id){
   var s = TOPF_ST[key] = TOPF_ST[key] || {}; s.kpi = (s.kpi===id) ? null : id;
   var fn = TOPF_RE[key], y = window.scrollY;
   if(fn){ fn(); window.scrollTo(0, y); }
 };
+// v72: cắt cột theo nhóm KPI cho các tab khác (Tab1, Tab2/3, Tab4, Trưng bày, KLBH)
+function topfTds(h){ return String(h).match(/<td[\s\S]*?<\/td>/g) || []; }
+function topfCols(h, idxs){ if(!idxs) return h; var t = topfTds(h); return idxs.map(function(i){ return t[i] || '<td></td>'; }).join(''); }
+function topfThSel(thArr, sel, dflt){ var idx = sel ? sel.cols : (dflt || thArr.map(function(_, i){ return i; })); return idx.map(function(i){ return thArr[i]; }).join(''); }
+function topfArrSel(arr, sel, dflt){ var idx = sel ? sel.cols : (dflt || arr.map(function(_, i){ return i; })); return idx.map(function(i){ return arr[i]; }).join(''); }
+function topfPctOf(a, b){ return b > 0 ? 100 * a / b : null; }
 window.__topf = function(key, which, on){
   var s = TOPF_ST[key] = TOPF_ST[key] || {};
   s[which] = !!on;
@@ -1076,16 +1082,32 @@ function t1ChTable(rows, prog){
   }
   return `<div class="tbl-scroll" style="max-height:65vh"><table${chTblAttr(hideSS)}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
 }
+function t1KpiDefs(prog){
+  const gift = t1IsGift(prog), bev = prog==='bev';
+  const d = [
+    {id:'dat', label:(gift?'Đã mua Nhất Ca · Đạt':'Phát sinh DS · Đạt'), cols:[0,1,2,3,4], val:it=>topfPctOf(it.dat,it.total), metric:'%đạt (số quầy đạt ÷ tổng quầy)'},
+    {id:'thuong', label:(gift?'Quà (chai Nhị Ca)':'Thưởng ước tính'), cols:[0,3,5,6], val:it=>gift ? topfPctOf(it.qua,it.total) : (it.total>0 ? it.thuong/it.total : null), metric:gift ? '%quầy có quà' : 'thưởng bình quân trên mỗi quầy'}
+  ];
+  if(bev) d.push({id:'dnl', label:'ĐK Dnl thùng đá', cols:[0,7,8], val:it=>topfPctOf(it.dnl,it.total), metric:'%quầy đã đăng ký Dnl thùng đá'});
+  d.dflt = '%đạt';
+  return d;
+}
 function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
   const gift = t1IsGift(prog);
   if(key==='ss' && topfOn('t1')){
-    const lastThF = gift ? 'Quà (chai Nhị Ca)' : 'Thưởng ước tính', midThF = gift ? 'Đã mua Nhất Ca' : 'Đã phát sinh DS';
+    const lastThF = gift ? 'Quà (chai Nhị Ca)' : 'Thưởng ước tính', midThF = gift ? 'Đã mua Nhất Ca' : 'Đã phát sinh DS', bev = prog==='bev';
+    const defs = t1KpiDefs(prog), sel = topfKpiSel('t1', defs);
+    const TH = ['Tổng quầy', midThF, '%'+(gift?'đã mua':'phát sinh'), 'Số đạt', '%đạt', lastThF, gift?'%quầy có quà':'Thưởng BQ/quầy', 'ĐK Dnl thùng đá', '%ĐK Dnl'];
+    const dflt = bev ? [0,1,3,4,5,7] : [0,1,3,4,5];
     const dm = {};
     rows.forEach(r=>{ if(!r.ddkd) return; const e=(dm[r.ss+'|'+r.ddkd]=dm[r.ss+'|'+r.ddkd]||{label:r.ddkd, ss:r.ss, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
-    const fr = topfRowsHtml('t1', Object.values(dm), it=>it.total>0 ? 100*it.dat/it.total + it.dat*1e-6 : null, it=>it.total>=5, it=>{
-      const pct = it.total>0 ? (100*it.dat/it.total).toFixed(1) : 0, last = gift ? fmt(it.qua) : fmtVnd(it.thuong), esc = x=>String(x).replace(/'/g,"\\'");
-      return `<tr class="rowclick" onclick="window.__t1set('ss','${esc(it.ss)}');window.__t1set('ddkd','${esc(it.label)}')">${topfIdTd(it.ss, it.label)}<td>${fmt(it.total)}</td><td>${fmt(it.chay)}</td><td>${fmt(it.dat)}</td><td>${pct}%</td><td>${last}</td>${prog==='bev'?`<td>${it.dnl?fmt(it.dnl):'—'}</td>`:''}</tr>`; }, prog==='bev'?10:9);
-    return `<div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${firstTh}<th>Tổng quầy</th><th>${midThF}</th><th>Số đạt</th><th>%đạt</th><th>${lastThF}</th>${prog==='bev'?'<th>ĐK Dnl thùng đá</th>':''}</tr></thead><tbody>${fr.html}</tbody></table></div>${topfNote('t1', fr.n, '%đạt (số quầy đạt ÷ tổng quầy)', 'chỉ xếp ĐDKD có ≥5 quầy')}`;
+    const pt = (a,b)=> b>0 ? (100*a/b).toFixed(1)+'%' : '0%';
+    const valF = sel ? sel.val : (it=>it.total>0 ? 100*it.dat/it.total + it.dat*1e-6 : null);
+    const fr = topfRowsHtml('t1', Object.values(dm), valF, it=>it.total>=5, it=>{
+      const esc = x=>String(x).replace(/'/g,"\\'");
+      const cells = [fmt(it.total), fmt(it.chay), pt(it.chay,it.total), fmt(it.dat), pt(it.dat,it.total), gift ? fmt(it.qua) : fmtVnd(it.thuong), gift ? pt(it.qua,it.total) : fmtVnd(it.total>0 ? Math.round(it.thuong/it.total) : 0), it.dnl?fmt(it.dnl):'—', pt(it.dnl,it.total)].map(x=>'<td>'+x+'</td>');
+      return `<tr class="rowclick" onclick="window.__t1set('ss','${esc(it.ss)}');window.__t1set('ddkd','${esc(it.label)}')">${topfIdTd(it.ss, it.label)}${topfArrSel(cells, sel, dflt)}</tr>`; }, 4+(sel?sel.cols:dflt).length);
+    return `<div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${firstTh}${topfThSel(TH.map(x=>'<th>'+x+'</th>'), sel, dflt)}</tr></thead><tbody>${fr.html}</tbody></table></div>${topfNote('t1', fr.n, sel ? sel.metric : '%đạt (số quầy đạt ÷ tổng quầy)', 'chỉ xếp ĐDKD có ≥5 quầy')}`;
   }
   const map = {};
   rows.forEach(r=>{ const k=r[key]||'(Chưa xác định)'; const e=(map[k]=map[k]||{label:k, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
@@ -1228,7 +1250,7 @@ function renderTab1Body(){
     const agg = !f.ss
       ? t1AggTable(rows, 'ss', prog, SSID_TH, null, 'ss')
       : t1AggTable(rows, 'ddkd', prog, '<th>ĐDKD</th>', null, 'ddkd');
-    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t1', ()=>renderTab1Body())}<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem thẳng danh sách CH (${fmt(rows.length)})</button></div>${agg}`;
+    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t1', ()=>renderTab1Body())}<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem thẳng danh sách CH (${fmt(rows.length)})</button></div>${f.ss?'':topfKpiBar('t1', t1KpiDefs(prog))}${agg}`;
   }
   // v9 (04/10/2026): đổi chỗ khối chọn chương trình <-> khối KPI: KPI -> banner ngày -> chọn CT -> bộ lọc
   // v48 (10/10): bộ lọc SS/ĐDKD lên TRÊN hàng chọn CT nhỏ; thêm bảng tổng hợp mọi CT gắn kết theo CH ở cuối
@@ -1533,15 +1555,25 @@ function renderTab23Body(tabKey){
     return gtip(it.label, dimLabel, [['Nền',fmtTy(it.nen)],['Thực đạt',fmtTy(it.a)],['%so nền', (it.nen>0?(100*it.a/it.nen).toFixed(1):0)+'%'],['Đạt',it.dat,T23_STCOLORS.dat],['Đang chạy',it.dang_chay,T23_STCOLORS.dang_chay],['Chưa PS',it.chua,T23_STCOLORS.chua]]);
   }
   const t23F = nextKey==='ss' && topfOn('t23'+tabKey);
+  const T23KD = [
+    {id:'nen', label:'Nền · Thực đạt · %so nền', cols:[0,1,2], val:it=>it.nen>0 ? 100*it.a/it.nen : null, metric:'%thực đạt so với nền'},
+    {id:'dat', label:'Quầy Đạt', cols:[4,5,6], val:it=>topfPctOf(it.dat,it.n), metric:'%quầy Đạt (Đạt ÷ tổng quầy)'},
+    {id:'ps', label:'Quầy đã phát sinh', cols:[4,5,7,8,9], val:it=>topfPctOf(it.dat+it.dang_chay,it.n), metric:'%quầy đã phát sinh (Đạt + Đang chạy)'}
+  ];
+  T23KD.dflt = '%so nền';
+  const t23sel = null; // v72c: 1 mục chính (doanh số + quầy) → không cần thanh chọn KPI
+  const T23TH = ['Nền (tỷ)','Thực đạt (tỷ)','%so nền','Trạng thái (đạt/đang chạy/chưa PS)','Tổng quầy','Quầy Đạt','%quầy Đạt','Đang chạy','Chưa PS','%đã phát sinh'].map(x=>'<th>'+x+'</th>');
   let t23fr = null;
   if(t23F){
     const dmap = {};
     rows.forEach(r=>{ const e=(dmap[r.ss+'|'+r.ddkd]=dmap[r.ss+'|'+r.ddkd]||{label:r.ddkd, ss:r.ss, dat:0, dang_chay:0, chua:0, nen:0, a:0, n:0}); e[r.st]++; e.nen+=r.nen; e.a+=r.a; e.n++; });
-    t23fr = topfRowsHtml('t23'+tabKey, Object.values(dmap), it=>it.nen>0 ? 100*it.a/it.nen + it.dat*1e-6 : null, it=>it.n>=5,
-      it=>`<tr class="rowclick" onclick="window.__t23set('${tabKey}','ss','${it.ss.replace(/'/g,"\\'")}');window.__t23set('${tabKey}','ddkd','${it.label.replace(/'/g,"\\'")}')"${tipAttr(t23Tip(it))}>${topfIdTd(it.ss, it.label)}<td>${fmtTyNum(it.nen)}</td><td>${fmtTyNum(it.a)}</td><td>${it.nen>0?(100*it.a/it.nen).toFixed(1):0}%</td><td>${dot('xanh')}${it.dat} &nbsp;${dot('cam')}${it.dang_chay} &nbsp;${dot('do')}${it.chua}</td></tr>`, 8);
+    const pt = (a,b)=> b>0 ? (100*a/b).toFixed(1)+'%' : '0%';
+    t23fr = topfRowsHtml('t23'+tabKey, Object.values(dmap), t23sel ? t23sel.val : (it=>it.nen>0 ? 100*it.a/it.nen + it.dat*1e-6 : null), it=>it.n>=5,
+      it=>{ const cells = [fmtTyNum(it.nen), fmtTyNum(it.a), (it.nen>0?(100*it.a/it.nen).toFixed(1):0)+'%', dot('xanh')+it.dat+' &nbsp;'+dot('cam')+it.dang_chay+' &nbsp;'+dot('do')+it.chua, fmt(it.n), fmt(it.dat), pt(it.dat,it.n), fmt(it.dang_chay), fmt(it.chua), pt(it.dat+it.dang_chay,it.n)].map(x=>'<td>'+x+'</td>');
+        return `<tr class="rowclick" onclick="window.__t23set('${tabKey}','ss','${it.ss.replace(/'/g,"\\'")}');window.__t23set('${tabKey}','ddkd','${it.label.replace(/'/g,"\\'")}')"${tipAttr(t23Tip(it))}>${topfIdTd(it.ss, it.label)}${topfArrSel(cells, t23sel, [0,1,2,3])}</tr>`; }, 4+(t23sel?t23sel.cols:[0,1,2,3]).length);
   }
   const t23idTh = nextKey==='ss' ? SSID_TH : `<th>${dimLabel}</th>`;
-  const t23table = `<table class="tbl-compact"><thead><tr>${t23idTh}<th>Nền (tỷ)</th><th>Thực đạt (tỷ)</th><th>%so nền</th><th>Trạng thái (đạt/đang chạy/chưa PS)</th></tr></thead><tbody>
+  const t23table = `<table class="tbl-compact"><thead><tr>${t23idTh}${topfThSel(T23TH, t23sel, [0,1,2,3])}</tr></thead><tbody>
   ${t23F ? t23fr.html : rowItems.map(it=>{const cls=' class="rowclick" onclick="window.__t23set(\''+tabKey+'\',\''+nextKey+'\',\''+String(it.label).replace(/'/g,"\\'")+'\')"'; const idTd = nextKey==='ss' ? ssIdTd(it.label) : `<td>${it.label}</td>`; return `<tr${cls}${tipAttr(t23Tip(it))}>${idTd}<td>${fmtTyNum(it.nen)}</td><td>${fmtTyNum(it.a)}</td><td>${it.nen>0?(100*it.a/it.nen).toFixed(1):0}%</td><td>${dot('xanh')}${it.dat} &nbsp;${dot('cam')}${it.dang_chay} &nbsp;${dot('do')}${it.chua}</td></tr>`}).join('')}
   </tbody></table>`;
   // mục225 (20/09/2026, sửa lại 20/09/2026 sau khi user phản hồi "chỉ nói bỏ biểu đồ của ĐDKD thôi
@@ -1553,7 +1585,7 @@ function renderTab23Body(tabKey){
     </div>
     <div>${donutChart([{label:'Đạt',value:totalDat,color:T23_STCOLORS.dat},{label:'Đang chạy',value:totalDang,color:T23_STCOLORS.dang_chay},{label:'Chưa PS',value:totalChua,color:T23_STCOLORS.chua}])}</div>
   </div>`;
-  body.innerHTML = `${t23chartRow}${nextKey==='ss' ? topfHead(t23F ? 'Chi tiết theo ĐDKD — xếp hạng %so nền (bấm 1 ĐDKD để xem quầy)' : 'Chi tiết theo SS (bấm 1 SS để khoan sâu)', 't23'+tabKey, ()=>renderTab23(tabKey, tabKey==='t2'?'panel-t2':'panel-t3', tabKey==='t2'?'tab2':'tab3')) : ''}<div class="tbl-scroll">${t23table}</div>${t23F ? topfNote('t23'+tabKey, t23fr.n, '%thực đạt so với nền', 'chỉ xếp ĐDKD có ≥5 quầy') : ''}`;
+  body.innerHTML = `${t23chartRow}${nextKey==='ss' ? topfHead(t23F ? 'Chi tiết theo ĐDKD — xếp hạng %so nền (bấm 1 ĐDKD để xem quầy)' : 'Chi tiết theo SS (bấm 1 SS để khoan sâu)', 't23'+tabKey, ()=>renderTab23(tabKey, tabKey==='t2'?'panel-t2':'panel-t3', tabKey==='t2'?'tab2':'tab3')) : ''}<div class="tbl-scroll">${t23table}</div>${t23F ? topfNote('t23'+tabKey, t23fr.n, t23sel ? t23sel.metric : '%thực đạt so với nền', 'chỉ xếp ĐDKD có ≥5 quầy') : ''}`;
 }
 window.__t23set = function(tabKey,key,val){
   t23state[tabKey][key]=val;
@@ -2118,16 +2150,28 @@ function renderTab4Body(){
     const totalDa = list.reduce((s,i)=>s+i.da,0), totalChua = list.reduce((s,i)=>s+(i.total-i.da),0);
     const totalDs = list.reduce((s,i)=>s+i.ds,0);
     const t4F = topfOn('t4');
+    const T4KD = [
+      {id:'ps', label:'Phát sinh', cols:[0,1,2,3], val:it=>topfPctOf(it.da,it.total), metric:'%quầy đã phát sinh ('+kenhLabel+')'},
+      {id:'ds', label:'Doanh số', cols:[0,4,5], val:it=>it.total>0 ? it.ds/it.total : null, metric:'doanh số bình quân trên mỗi quầy ('+kenhLabel+')'}
+    ];
+    T4KD.dflt = '%quầy đã phát sinh';
+    const t4sel = null; // v72c: Tab ASO active chỉ có 1 mục chính (ASO + doanh số) → không cần thanh chọn KPI
+    const T4DFLT = [0,1,2,3,4];
+    const T4TH = [univerLabel, 'Đã phát sinh', 'Chưa phát sinh', '%quầy/'+univerLabel, 'Doanh số (sau CK, tỷ)', 'DS bình quân/quầy (triệu)'].map(x=>'<th>'+x+'</th>');
+    const bq = (ds,t)=> t>0 ? (ds/t/1e6).toLocaleString('vi-VN',{maximumFractionDigits:1}) : '0';
     let t4fr = null;
     if(t4F){
       const dmap = {};
       rows.forEach(r=>{ const m = dmap[r.ss+'|'+r.ddkd] = dmap[r.ss+'|'+r.ddkd] || {label:r.ddkd, ss:r.ss, total:0, da:0, ds:0}; m.total++; if(r.da) m.da++; m.ds += (r.ds||0); });
-      t4fr = topfRowsHtml('t4', Object.values(dmap), it=>it.total>0 ? 100*it.da/it.total + it.da*1e-6 : null, it=>it.total>=5,
-        it=>{ const p = pct1(it.da, it.total); return `<tr class="rowclick" onclick="window.__t4setSS('${it.ss.replace(/'/g,"\\'")}');window.__t4setDDKD('${it.label.replace(/'/g,"\\'")}')"${tipAttr(t4Tip(it,'ĐDKD / vị trí'))}>${topfIdTd(it.ss, it.label)}<td>${fmt(it.total)}</td><td>${fmt(it.da)}</td><td>${fmt(it.total-it.da)}</td><td>${pctc(color_for_pct_js(p), (p)+'%')}</td><td>${fmtTyNum(it.ds)}</td></tr>`; }, 9);
+      t4fr = topfRowsHtml('t4', Object.values(dmap), t4sel ? t4sel.val : (it=>it.total>0 ? 100*it.da/it.total + it.da*1e-6 : null), it=>it.total>=5,
+        it=>{ const p = pct1(it.da, it.total); const cells = [fmt(it.total), fmt(it.da), fmt(it.total-it.da), pctc(color_for_pct_js(p), (p)+'%'), fmtTyNum(it.ds), bq(it.ds,it.total)].map(x=>'<td>'+x+'</td>');
+          return `<tr class="rowclick" onclick="window.__t4setSS('${it.ss.replace(/'/g,"\\'")}');window.__t4setDDKD('${it.label.replace(/'/g,"\\'")}')"${tipAttr(t4Tip(it,'ĐDKD / vị trí'))}>${topfIdTd(it.ss, it.label)}${topfArrSel(cells, t4sel, T4DFLT)}</tr>`; }, 4+(t4sel?t4sel.cols:T4DFLT).length);
     }
-    const t4table1 = `<table class="tbl-compact"><thead><tr>${SSID_TH}${U_HEAD}</tr></thead><tbody>
+    const t4totTotal = list.reduce((s,i)=>s+i.total,0);
+    const t4totCells = [fmt(t4totTotal), fmt(totalDa), fmt(totalChua), pctc(color_for_pct_js(pct1(totalDa,totalDa+totalChua)), pct1(totalDa,totalDa+totalChua)+'%'), fmtTyNum(totalDs), bq(totalDs,t4totTotal)].map(x=>'<td>'+x+'</td>');
+    const t4table1 = `<table class="tbl-compact"><thead><tr>${SSID_TH}${t4F ? topfThSel(T4TH, t4sel, T4DFLT) : U_HEAD}</tr></thead><tbody>
     ${t4F ? '' : tableList.map(it=>uRow(it,'window.__t4setSS','Sales Supervisor')).join('')}
-    <tr class="t8-total-row">${ssIdTotalTd('TỔNG', SSID_TOTAL_DDKD)}<td>${fmt(list.reduce((s,i)=>s+i.total,0))}</td><td>${fmt(totalDa)}</td><td>${fmt(totalChua)}</td><td>${pctc(color_for_pct_js(pct1(totalDa,totalDa+totalChua)), pct1(totalDa,totalDa+totalChua)+'%')}</td><td>${fmtTyNum(totalDs)}</td></tr>
+    <tr class="t8-total-row">${ssIdTotalTd('TỔNG', SSID_TOTAL_DDKD)}${t4F ? topfArrSel(t4totCells, t4sel, T4DFLT) : topfArrSel(t4totCells, null, T4DFLT)}</tr>
     ${t4F ? t4fr.html : ''}
     </tbody></table>`;
     body.innerHTML = `<div class="chart-row">
@@ -2135,7 +2179,7 @@ function renderTab4Body(){
       <div>${donutChart([{label:'Đã phát sinh',value:totalDa,color:'#16a34a'},{label:'Chưa phát sinh',value:totalChua,color:'#dc2626'}])}</div>
     </div>
     ${topfHead(t4F ? 'Chi tiết theo ĐDKD — xếp hạng %quầy đã phát sinh (bấm 1 ĐDKD để xem quầy)' : 'Chi tiết theo SS (bấm 1 SS để khoan sâu)', 't4', ()=>renderTab4Body())}
-    <div class="tbl-scroll">${t4table1}</div>${t4F ? topfNote('t4', t4fr.n, '%quầy đã phát sinh ('+kenhLabel+')', 'chỉ xếp ĐDKD có ≥5 quầy') : ''}`;
+    <div class="tbl-scroll">${t4table1}</div>${t4F ? topfNote('t4', t4fr.n, t4sel ? t4sel.metric : '%quầy đã phát sinh ('+kenhLabel+')', 'chỉ xếp ĐDKD có ≥5 quầy') : ''}`;
   } else if(!t4filters.ddkd){
     // level 2: group by ddkd within ss, theo dung kenh dang chon (rows da loc theo kenh+ss)
     const map = {};
@@ -2416,15 +2460,26 @@ function renderTab5Body(){
     const t5DdTds = it=>{ const q=it.aq.size, k=it.qdd.size; return `<td style="font-weight:700;color:#1d4ed8">${fmt(it.bh)}</td><td title="${k} / ${q} quầy có ≥1 bộ hình do ĐDKD chụp${it.tmN>0?' (gồm CT Tủ mát)':''}" style="font-weight:700">${q>0?(100*k/q).toFixed(1):0}%</td>`; };
     const t5TbCells = (it,t)=> (t===0&&it.tmN>0) ? `<td colspan="6" class="small" style="color:var(--sub);text-align:center" title="CT Tủ mát chỉ ĐDKD chụp — không tính vào tổng suất Tbay; chỉ Tracking bộ hình ĐDKD (2 cột bên phải)">Tủ mát — chỉ ĐDKD chụp, ngoài tổng Tbay: ${fmt(it.tmN)} suất · đạt ≥${TM_MIN_DAT} bộ ${fmt(it.tm_dat)} (${(100*it.tm_dat/it.tmN).toFixed(1)}%) · &lt;${TM_MIN_DAT} bộ ${fmt(it.tm_p)} · chưa chụp ${fmt(it.tm_0)}</td>` : `<td>${it.quaySet.size}</td><td>${t}</td><td>${it.dat_chuan}</td><td>${it.da_chup}</td><td>${it.chua_chup}</td><td>${t>0?(100*it.dat_chuan/t).toFixed(1):0}%</td>`;
     const t5F = nextKey==='ss' && topfOn('t5') && !tmView;
+    const T5KD = [
+      {id:'dat', label:'Đạt ≥6 bộ', cols:[1,2,5], val:it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; return topfPctOf(it.dat_chuan,t); }, metric:'%Đạt ≥6 bộ (suất Tbay)'},
+      {id:'chup', label:'Đã chụp hình', cols:[1,2,3,4,8], val:it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; return topfPctOf(it.dat_chuan+it.da_chup,t); }, metric:'%suất đã chụp hình (Đạt ≥6 + Đã chụp <6)'},
+      {id:'dd', label:'ĐDKD chụp', cols:[0,6,7], val:it=>topfPctOf(it.qdd.size,it.aq.size), metric:'%TH ĐDKD chụp (quầy có ≥1 bộ do ĐDKD chụp)'}
+    ];
+    T5KD.dflt = '%Đạt ≥6';
+    const t5sel = t5F ? topfKpiSel('t5', T5KD) : null;
+    const T5DFLT = [0,1,2,3,4,5,6,7];
     let t5fr = null;
     if(t5F){
       const dmap = {};
       rowsC.forEach(r=>{ const e = dmap[r.ss+'|'+r.ddkd] = dmap[r.ss+'|'+r.ddkd] || {label:r.ddkd, ss:r.ss, dat_chuan:0, da_chup:0, chua_chup:0, quaySet:new Set(), aq:new Set(), tmN:0, bh:0, qdd:new Set()}; if(r.st==='tm') e.tmN++; else { e[r.st]++; e.quaySet.add(r.ma); } e.aq.add(r.ma); e.bh += (r.dd_chup||0); if((r.dd_chup||0)>0) e.qdd.add(r.ma); });
-      t5fr = topfRowsHtml('t5', Object.values(dmap), it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; return t>0 ? 100*it.dat_chuan/t + it.dat_chuan*1e-6 : null; }, it=>(it.dat_chuan+it.da_chup+it.chua_chup)>=10,
-        it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; return `<tr class="rowclick" onclick="window.__t5set('ss','${it.ss.replace(/'/g,"\\'")}');window.__t5set('ddkd','${it.label.replace(/'/g,"\\'")}')"${tipAttr(t5Tip(Object.assign({}, it)))}>${topfIdTd(it.ss, it.label)}${tmView?`<td>${it.aq.size}</td><td>${it.tmN}</td><td>${it.tm_dat}</td><td>${it.tm_p}</td><td>${it.tm_0}</td><td>${it.tmN>0?(100*it.tm_dat/it.tmN).toFixed(1):0}%</td>`:t5TbCells(it,t)}${t5DdTds(it)}</tr>`; }, 12);
+      t5fr = topfRowsHtml('t5', Object.values(dmap), t5sel ? t5sel.val : (it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; return t>0 ? 100*it.dat_chuan/t + it.dat_chuan*1e-6 : null; }), it=>(it.dat_chuan+it.da_chup+it.chua_chup)>=10,
+        it=>{ const t=it.dat_chuan+it.da_chup+it.chua_chup; const allc = t5TbCells(it,t) + t5DdTds(it) + `<td>${t>0?(100*(it.dat_chuan+it.da_chup)/t).toFixed(1):0}%</td>`;
+          return `<tr class="rowclick" onclick="window.__t5set('ss','${it.ss.replace(/'/g,"\\'")}');window.__t5set('ddkd','${it.label.replace(/'/g,"\\'")}')"${tipAttr(t5Tip(Object.assign({}, it)))}>${topfIdTd(it.ss, it.label)}${topfCols(allc, t5sel ? t5sel.cols : T5DFLT)}</tr>`; }, 4+(t5sel?t5sel.cols:T5DFLT).length);
     }
+    const T5TH = ['Số quầy Tbay','Số suất Tbay','🟢 Đạt ≥6','🟠 Đã chụp','🔴 Chưa chụp','%Đạt ≥6','📷 BH ĐDKD chụp','%TH ĐDKD chụp','%Đã chụp hình'].map(x=>'<th>'+x+'</th>');
+    const t5thNorm = t5sel ? topfThSel(T5TH, t5sel) : '<th>Số quầy Tbay</th><th>Số suất Tbay</th><th>🟢 Đạt ≥6</th><th>🟠 Đã chụp</th><th>🔴 Chưa chụp</th><th>%Đạt ≥6</th><th title="Tổng số bộ hình do ĐDKD tự chụp tại các suất đang xem">📷 BH ĐDKD chụp</th><th title="Số quầy có ≥1 bộ hình do ĐDKD chụp ÷ số quầy có đăng ký (gồm cả CT Tủ mát)">%TH ĐDKD chụp</th>';
     const t5idTh = nextKey==='ss' ? SSID_TH : `<th>${dimLabel}</th>`;
-    const t5tableInner = `<table class="tbl-compact"><thead><tr>${t5idTh}${tmView?'<th>Số quầy</th><th>Số suất Tủ mát</th><th>🟢 Đạt ≥'+TM_MIN_DAT+' bộ đạt</th><th>🟠 Đã chụp &lt;'+TM_MIN_DAT+'</th><th>🔴 Chưa chụp</th><th>%Đạt ≥'+TM_MIN_DAT+' bộ</th>':'<th>Số quầy Tbay</th><th>Số suất Tbay</th><th>🟢 Đạt ≥6</th><th>🟠 Đã chụp</th><th>🔴 Chưa chụp</th><th>%Đạt ≥6</th>'}<th title="Tổng số bộ hình do ĐDKD tự chụp tại các suất đang xem">📷 BH ĐDKD chụp</th><th title="Số quầy có ≥1 bộ hình do ĐDKD chụp ÷ số quầy có đăng ký (gồm cả CT Tủ mát)">%TH ĐDKD chụp</th></tr></thead><tbody>
+    const t5tableInner = `<table class="tbl-compact"><thead><tr>${t5idTh}${tmView?'<th>Số quầy</th><th>Số suất Tủ mát</th><th>🟢 Đạt ≥'+TM_MIN_DAT+' bộ đạt</th><th>🟠 Đã chụp &lt;'+TM_MIN_DAT+'</th><th>🔴 Chưa chụp</th><th>%Đạt ≥'+TM_MIN_DAT+' bộ</th>':t5thNorm}${tmView?'<th title="Tổng số bộ hình do ĐDKD tự chụp tại các suất đang xem">📷 BH ĐDKD chụp</th><th title="Số quầy có ≥1 bộ hình do ĐDKD chụp ÷ số quầy có đăng ký (gồm cả CT Tủ mát)">%TH ĐDKD chụp</th>':''}</tr></thead><tbody>
     ${t5F ? t5fr.html : rowItems.map(it=>{const t=it.dat_chuan+it.da_chup+it.chua_chup; const idTd = nextKey==='ss' ? ssIdTd(it.label) : `<td>${it.label}</td>`; return `<tr class="rowclick" onclick="window.__t5set('${nextKey}','${String(it.label).replace(/'/g,"\\'")}')"${tipAttr(t5Tip(it))}>${idTd}${tmView?`<td>${it.aq.size}</td><td>${it.tmN}</td><td>${it.tm_dat}</td><td>${it.tm_p}</td><td>${it.tm_0}</td><td>${it.tmN>0?(100*it.tm_dat/it.tmN).toFixed(1):0}%</td>`:t5TbCells(it,t)}${t5DdTds(it)}</tr>`}).join('')}
     </tbody></table>`;
     if(!items.length){ body.innerHTML = aggFilterHtml + `<div class="small" style="padding:14px;color:#b91c1c">Không có suất Tbay nào phù hợp bộ lọc đang chọn — bấm "Tất cả" ở các nhóm chip hoặc "Xóa lọc" để xem lại.</div>`; return; }
@@ -2446,8 +2501,8 @@ function renderTab5Body(){
       </div>
       <div>${donutChart([{label:'Đạt ≥6',value:cC.dat_chuan,color:T5_STCOLORS.dat_chuan},{label:'Đã chụp',value:cC.da_chup,color:T5_STCOLORS.da_chup},{label:'Chưa chụp',value:cC.chua_chup,color:T5_STCOLORS.chua_chup}])}</div>
     </div>
-    ${nextKey==='ss' ? topfHead(t5F ? 'Chi tiết theo ĐDKD — xếp hạng %Đạt ≥6 (bấm 1 ĐDKD để xem quầy)' : 'Chi tiết theo SS (bấm 1 SS để khoan sâu)', 't5', ()=>renderTab5()) : ''}
-    <div class="tbl-scroll">${t5tableInner}</div>${t5F ? topfNote('t5', t5fr.n, '%Đạt ≥6 bộ (suất Tbay)', 'chỉ xếp ĐDKD có ≥10 suất') : ''}`;
+    ${nextKey==='ss' ? topfHead(t5F ? 'Chi tiết theo ĐDKD — xếp hạng %Đạt ≥6 (bấm 1 ĐDKD để xem quầy)' : 'Chi tiết theo SS (bấm 1 SS để khoan sâu)', 't5', ()=>renderTab5(), T5KD) : ''}
+    <div class="tbl-scroll">${t5tableInner}</div>${t5F ? topfNote('t5', t5fr.n, t5sel ? t5sel.metric : '%Đạt ≥6 bộ (suất Tbay)', 'chỉ xếp ĐDKD có ≥10 suất') : ''}`;
   } else {
     // raw quay-level table, co the loc them theo Trang thai
     const allSorted = rows.slice().sort((a,b)=> ((b.banker!=null)-(a.banker!=null)) || ((b.t9_dat6?1:0)-(a.t9_dat6?1:0)) || a.ten.localeCompare(b.ten)); // đủ ĐK Dnl + có banker lên đầu
@@ -2822,10 +2877,9 @@ function t6tvOne(o,k){
 const T6_TV_TH_TEA = '<th>CT SO<br>Tea</th><th>MTD<br>Tea</th><th>%TH<br>Tea</th><th>VPO<br>Tea</th>';
 const T6_TV_TH_HM = '<th>CT SO<br>Homey 2,9kg</th><th>MTD<br>Homey 2,9kg</th><th>%TH<br>Homey 2,9kg</th><th>VPO<br>Homey 2,9kg</th>';
 const T6_GS = [
-  {id:'xanh', label:'ASO Trận Xanh', th:'<th>ASO Xanh</th><th>CT Xanh</th><th>% Xanh</th>', td:d=>`<td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>`, val:d=>d.tran_xanh_pct, note:'% ASO Trận Xanh (Tea 365)'},
-  {id:'tea', label:'Doanh số Tea', th:T6_TV_TH_TEA, td:d=>t6tvOne(d,'tea'), val:d=>d.tea_pct, note:'%TH doanh số Tea 365 (MTD ÷ CT SO)'},
-  {id:'vang', label:'ASO Trận Vàng', th:'<th>ASO Vàng</th><th>CT Vàng</th><th>% Vàng</th>', td:d=>`<td>${fmt(d.aso_vang)}</td><td>${fmt(d.aso_vang_t)}</td><td>${pctc(color_for_pct_js(d.tran_vang_pct), '<strong>'+(d.tran_vang_pct)+'%</strong>')}</td>`, val:d=>d.tran_vang_pct, note:'% ASO Trận Vàng (Homey 2,9kg)'},
-  {id:'hm', label:'Doanh số Homey 2,9kg', th:T6_TV_TH_HM, td:d=>t6tvOne(d,'hm'), val:d=>d.hm_pct, note:'%TH doanh số Homey 2,9kg (MTD ÷ CT SO)'}];
+  {id:'xanh', label:'Trận Xanh Tea', th:'<th>ASO Xanh</th><th>CT Xanh</th><th>% Xanh</th>'+T6_TV_TH_TEA, td:d=>`<td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>`+t6tvOne(d,'tea'), val:d=>d.tran_xanh_pct, note:'% ASO Trận Xanh (Tea 365) — kèm doanh số Tea 365'},
+  {id:'vang', label:'Trận Vàng Homey 2,9kg', th:'<th>ASO Vàng</th><th>CT Vàng</th><th>% Vàng</th>'+T6_TV_TH_HM, td:d=>`<td>${fmt(d.aso_vang)}</td><td>${fmt(d.aso_vang_t)}</td><td>${pctc(color_for_pct_js(d.tran_vang_pct), '<strong>'+(d.tran_vang_pct)+'%</strong>')}</td>`+t6tvOne(d,'hm'), val:d=>d.tran_vang_pct, note:'% ASO Trận Vàng (Homey 2,9kg) — kèm doanh số Homey 2,9kg'}];
+T6_GS.dflt = 'ASO Trận Xanh + Vàng';
 function t6asoNorm(r){ return Object.assign({}, r, {aso_xanh:r.xanh, aso_xanh_t:r.xanh_ct, tran_xanh_pct:r.xanh_pct, aso_vang:r.vang, aso_vang_t:r.vang_ct, tran_vang_pct:r.vang_pct}); }
 function t6asoRollupTable(ssname){
   // vong 42: co ssname -> khoan sau toi cap DDKD trong 1 SS (truoc do chi co ASM + SS, bam vao SS lai nhay sang trang khac);
@@ -4049,30 +4103,50 @@ function t16FlatRows(key, snap, val, cellsFn, ncols, detailFn){
 }
 function t16Section1Table(){
   const snap = t16Snap(), t = snap.tong;
-  const F = topfOn('t16b1'), fr = F ? t16FlatRows('t16b1', snap, d=>d.pct_th_vt, t16Cells1, 15) : null;
-  let html = `<div class="card">${topfHead('1. Thăm viếng bán hàng (VT)'+(F?' — theo ĐDKD':''), 't16b1', ()=>renderTab16())}
+  const F = topfOn('t16b1');
+  const K1 = [
+    {id:'ngay', label:'Ngày đang xem', cols:[0,1,2], val:d=>d.pct_cutoff, metric:'%TH viếng thăm của ngày đang xem'},
+    {id:'t12', label:'So T-1 · T-2', cols:[2,3,4,5,6,10], val:d=>{ const a=[d.pct_cutoff,d.pct_t1,d.pct_t2].filter(x=>x!=null); return a.length ? a.reduce((p,q)=>p+q,0)/a.length : null; }, metric:'%TH viếng thăm trung bình 3 ngày gần nhất (ngày · T-1 · T-2)'},
+    {id:'lk', label:'Luỹ kế (LK)', cols:[7,8,9,10], val:d=>d.pct_th_vt, metric:'%TH viếng thăm LK'}
+  ];
+  K1.dflt = '%TH viếng thăm LK';
+  const sel1 = F ? topfKpiSel('t16b1', K1) : null;
+  const TH1 = [`KH VT (${snap.ngay_cutoff})`,'TH VT','%TH','TH VT (T-1)','%TH (T-1)','TH VT (T-2)','%TH (T-2)','KH VT (LK)','TH VT (LK)','%TH (LK)','Xu hướng'].map(x=>'<th>'+x+'</th>');
+  const fr = F ? t16FlatRows('t16b1', snap, sel1 ? sel1.val : d=>d.pct_th_vt, sel1 ? (d=>topfCols(t16Cells1(d), sel1.cols)) : t16Cells1, 4+(sel1?sel1.cols.length:11)) : null;
+  let html = `<div class="card">${topfHead('1. Thăm viếng bán hàng (VT)'+(F?' — theo ĐDKD':''), 't16b1', ()=>renderTab16(), K1)}
   <div class="small" style="margin-bottom:8px">%TH VT = Đã viếng thăm / Số call theo lịch · Đang xem đến ngày: <b>${snap.ngay_cutoff}</b> · so T-1 (<b>${snap.ngay_t1||'—'}</b>) / T-2 (<b>${snap.ngay_t2||'—'}</b>) · Bấm ▸ để sổ xuống NPP → SS → ĐDKD</div>
   ${t16kpiSection1()}
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>KH VT (${snap.ngay_cutoff})</th><th>TH VT</th><th>%TH</th><th>TH VT (T-1)</th><th>%TH (T-1)</th><th>TH VT (T-2)</th><th>%TH (T-2)</th><th>KH VT (LK)</th><th>TH VT (LK)</th><th>%TH (LK)</th><th>Xu hướng</th></tr></thead><tbody>
-  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}<td>${fmt(t.kh_cutoff)}</td><td>${fmt(t.th_cutoff)}</td><td>${pctc(t16Band(t.pct_cutoff,100,90,80),t.pct_cutoff+'%')}</td><td>${fmt(t.th_t1)}</td><td>${t16pct(t.pct_t1)}</td><td>${fmt(t.th_t2)}</td><td>${t16pct(t.pct_t2)}</td><td>${fmt(t.kh_vt)}</td><td>${fmt(t.th_vt)}</td><td>${pctc(t16Band(t.pct_th_vt,100,90,80),t.pct_th_vt+'%')}</td><td>${t16Trend(t.xu_huong)}</td></tr>
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}${topfThSel(TH1, sel1)}</tr></thead><tbody>
+  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}${topfCols(`<td>${fmt(t.kh_cutoff)}</td><td>${fmt(t.th_cutoff)}</td><td>${pctc(t16Band(t.pct_cutoff,100,90,80),t.pct_cutoff+'%')}</td><td>${fmt(t.th_t1)}</td><td>${t16pct(t.pct_t1)}</td><td>${fmt(t.th_t2)}</td><td>${t16pct(t.pct_t2)}</td><td>${fmt(t.kh_vt)}</td><td>${fmt(t.th_vt)}</td><td>${pctc(t16Band(t.pct_th_vt,100,90,80),t.pct_th_vt+'%')}</td><td>${t16Trend(t.xu_huong)}</td>`, sel1 ? sel1.cols : null)}</tr>
   ${F ? fr.html : t16Tree('t16b1', snap, t16NppAgg1, t16Cells1, t16Cells1)}
-  </tbody></table></div>${F ? topfNote('t16b1', fr.n, '%TH viếng thăm LK (TH VT ÷ KH VT)') : ''}</div>`;
+  </tbody></table></div>${F ? topfNote('t16b1', fr.n, sel1 ? sel1.metric : '%TH viếng thăm LK (TH VT ÷ KH VT)') : ''}</div>`;
   return html;
 }
 function t16Section2Table(){
   const snap = t16Snap(), t = snap.tong;
-  const F = topfOn('t16b2'), fr = F ? t16FlatRows('t16b2', snap, d=>d.pct_pc_vt, t16Cells2, 18) : null;
-  let html = `<div class="card">${topfHead('2. Hiệu suất bán hàng (PC / viếng thăm)'+(F?' — theo ĐDKD':''), 't16b2', ()=>renderTab16())}
+  const F = topfOn('t16b2');
+  const K2 = [
+    {id:'ngay', label:'PC ngày đang xem', cols:[0,1], val:d=>d.pct_pc_vt_cutoff, metric:'%PC / viếng thăm của ngày đang xem'},
+    {id:'t12', label:'So T-1 · T-2', cols:[2,3,4,5], val:d=>{ const a=[d.pct_pc_vt_cutoff,d.pct_pc_vt_t1,d.pct_pc_vt_t2].filter(x=>x!=null); return a.length ? a.reduce((p,q)=>p+q,0)/a.length : null; }, metric:'%PC / viếng thăm trung bình 3 ngày gần nhất'},
+    {id:'lk', label:'PC luỹ kế (LK)', cols:[6,7], val:d=>d.pct_pc_vt, metric:'%PC / viếng thăm LK'},
+    {id:'tt', label:'Đơn trái tuyến', cols:[8,9,10,11,12,13], val:d=>d.pct_pctt_luyke==null ? null : 100-d.pct_pctt_luyke, metric:'%đơn trái tuyến LK (càng thấp càng tốt)'}
+  ];
+  K2.dflt = '%PC / viếng thăm LK';
+  const sel2 = F ? topfKpiSel('t16b2', K2) : null;
+  const c5_2 = String(snap.ngay_cutoff).slice(0,5);
+  const TH2 = [`PC (${snap.ngay_cutoff})`,'%PC/VT','TH PC (T-1)','%PC/VT (T-1)','TH PC (T-2)','%PC/VT (T-2)','PC (LK)','%PC/VT (LK)',`TT (${c5_2})`,`% TT (${c5_2})`,'TT (LK)','└ TT ĐDKD tạo','└ TT CH đặt (R)','% TT (LK)'].map(x=>'<th>'+x+'</th>');
+  const fr = F ? t16FlatRows('t16b2', snap, sel2 ? sel2.val : d=>d.pct_pc_vt, sel2 ? (d=>topfCols(t16Cells2(d), sel2.cols)) : t16Cells2, 4+(sel2?sel2.cols.length:14)) : null;
+  let html = `<div class="card">${topfHead('2. Hiệu suất bán hàng (PC / viếng thăm)'+(F?' — theo ĐDKD':''), 't16b2', ()=>renderTab16(), K2)}
   <div class="small" style="margin-bottom:8px">PC = số đơn hàng hợp lệ (không hủy) · %PC/VT = PC ÷ TH VT · Trái tuyến = đơn phát sinh ngoài tuyến được giao (cờ Trái tuyến = Y), gồm: TT ĐDKD tạo = ĐDKD tạo đơn ngoài tuyến · TT CH đặt (R) = cửa hàng tự đặt qua app (nguồn WEB) · Trái tuyến (LK) = TT ĐDKD tạo + TT CH đặt (R) · % TT = Trái tuyến ÷ PC · Đơn hủy và Chủ nhật không tính · Bấm ▸ để sổ xuống NPP → SS → ĐDKD</div>
   <div class="kpi-row">
     <div class="kpi accent c-${t16Band(t.pct_pc_vt,100,80,60)}"><div class="lbl">%PC / Viếng thăm (LK)</div><div class="val">${t.pct_pc_vt}%</div><div class="sub">${fmt(t.pc)} đơn / ${fmt(t.th_vt||0)} lượt VT</div></div>
     <div class="kpi accent"><div class="lbl">PC trái tuyến (LK)</div><div class="val">${fmt(t.pc_trai_tuyen)}</div><div class="sub">${t.pct_don_tt}% tổng đơn hợp lệ</div></div>
     <div class="kpi accent"><div class="lbl">Trong đó TT CH đặt (R) / TT ĐDKD tạo (LK)</div><div class="val">${fmt(t.pc_tt_r)} / ${fmt(t.pc_tt_ddkd)}</div><div class="sub">CH tự đặt qua app (WEB) / ĐDKD tạo đơn ngoài tuyến</div></div>
   </div>
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>PC (${snap.ngay_cutoff})</th><th>%PC/VT</th><th>TH PC (T-1)</th><th>%PC/VT (T-1)</th><th>TH PC (T-2)</th><th>%PC/VT (T-2)</th><th>PC (LK)</th><th>%PC/VT (LK)</th><th>TT (${String(snap.ngay_cutoff).slice(0,5)})</th><th>% TT (${String(snap.ngay_cutoff).slice(0,5)})</th><th>TT (LK)</th><th>└ TT ĐDKD tạo</th><th>└ TT CH đặt (R)</th><th>% TT (LK)</th></tr></thead><tbody>
-  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}<td>${fmt(t.pc_cutoff)}</td><td>${pctc(t16Band(t.pct_pc_vt_cutoff,100,80,60),t.pct_pc_vt_cutoff+'%')}</td><td>${fmt(t.pc_t1)}</td><td>${t16pct(t.pct_pc_vt_t1)}</td><td>${fmt(t.pc_t2)}</td><td>${t16pct(t.pct_pc_vt_t2)}</td><td>${fmt(t.pc)}</td><td>${pctc(t16Band(t.pct_pc_vt,100,80,60),t.pct_pc_vt+'%')}</td><td>${fmt(t.pc_trai_tuyen_cutoff)}</td><td>${t16pct(t.pct_pctt_cutoff)}</td><td>${fmt(t.pc_trai_tuyen)}</td><td>${fmt(t.pc_tt_ddkd)}</td><td>${fmt(t.pc_tt_r)}</td><td>${t16pct(t.pct_pctt_luyke)}</td></tr>
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}${topfThSel(TH2, sel2)}</tr></thead><tbody>
+  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}${topfCols(`<td>${fmt(t.pc_cutoff)}</td><td>${pctc(t16Band(t.pct_pc_vt_cutoff,100,80,60),t.pct_pc_vt_cutoff+'%')}</td><td>${fmt(t.pc_t1)}</td><td>${t16pct(t.pct_pc_vt_t1)}</td><td>${fmt(t.pc_t2)}</td><td>${t16pct(t.pct_pc_vt_t2)}</td><td>${fmt(t.pc)}</td><td>${pctc(t16Band(t.pct_pc_vt,100,80,60),t.pct_pc_vt+'%')}</td><td>${fmt(t.pc_trai_tuyen_cutoff)}</td><td>${t16pct(t.pct_pctt_cutoff)}</td><td>${fmt(t.pc_trai_tuyen)}</td><td>${fmt(t.pc_tt_ddkd)}</td><td>${fmt(t.pc_tt_r)}</td><td>${t16pct(t.pct_pctt_luyke)}</td>`, sel2 ? sel2.cols : null)}</tr>
   ${F ? fr.html : t16Tree('t16b2', snap, t16NppAgg2, t16Cells2, t16Cells2)}
-  </tbody></table></div>${F ? topfNote('t16b2', fr.n, '%PC / viếng thăm LK') : ''}</div>`;
+  </tbody></table></div>${F ? topfNote('t16b2', fr.n, sel2 ? sel2.metric : '%PC / viếng thăm LK') : ''}</div>`;
   return html;
 }
 function t16pctFrac(a,b){ return b>0 ? Math.round(1000*a/b)/10 : null; }
@@ -4082,8 +4156,17 @@ function t16Section3Table(){
   (snap.ddkd_list||[]).forEach(dd=>(dd.visits||[]).forEach(v=>{ if(t16VisitGpsBad(v)) t16NGps++; if(t16VisitMulti(v)) t16NLan++; }));
   (snap.ss_list||[]).forEach(sx=>{ const dd=(snap.ddkd_list||[]).filter(d=>d.ss===sx.ss); sx.n_ch_gps=dd.reduce((a,d)=>a+t16CntGps(d),0); sx.n_ch_lan=dd.reduce((a,d)=>a+t16CntLan(d),0); });
   const tG = t16NGps, tL = t16NLan;
-  const F = topfOn('t16b3'), fr = F ? t16FlatRows('t16b3', snap, d=>d.pct_gio_giac, t16Cells3Leaf, 14, t16VisitDetailRow) : null;
-  let html = `<div class="card">${topfHead('3. Kỷ luật giờ đầu-cuối ngày'+(F?' — theo ĐDKD':''), 't16b3', ()=>renderTab16())}
+  const F = topfOn('t16b3');
+  const K3 = [
+    {id:'gio', label:'Giờ đầu-cuối ngày', cols:[0,1,6], val:d=>d.pct_gio_giac, metric:'%tuân thủ giờ đầu ngày'},
+    {id:'vt', label:'VT đủ giờ / VT ngắn', cols:[2,3,4,5], val:d=>topfPctOf(d.n_vt_dat5, d.n_vt_dat5 + d.n_vt_ngan), metric:'%lượt VT đủ giờ LK (VT đủ giờ ÷ tổng lượt VT)'},
+    {id:'gps', label:'CH sai GPS · check out ≥2 lần', cols:[7,8], val:d=>-(t16CntGps(d)+t16CntLan(d)) + (d.pct_th_vt||0)*1e-6, metric:'tổng CH sai GPS + CH check out ≥2 lần (càng ít càng tốt)'}
+  ];
+  K3.dflt = '%tuân thủ giờ đầu ngày';
+  const sel3 = F ? topfKpiSel('t16b3', K3) : null;
+  const TH3 = [`Checkin ≤${m.checkin_cutoff}`,`Đơn đầu ≤${m.order_cutoff}`,'VT đủ giờ','VT ngắn','VT đủ giờ (LK)','VT ngắn (LK)',`Checkout ≥${m.checkout_cutoff}`,`CH sai GPS &gt;${m.gps_sai_m}m`,'CH check out ≥2 lần','KC CH cuối/liền kề'].map(x=>'<th>'+x+'</th>');
+  const fr = F ? t16FlatRows('t16b3', snap, sel3 ? sel3.val : d=>d.pct_gio_giac, sel3 ? (d=>topfCols(t16Cells3Leaf(d), sel3.cols)) : t16Cells3Leaf, 4+(sel3?sel3.cols.length:10), t16VisitDetailRow) : null;
+  let html = `<div class="card">${topfHead('3. Kỷ luật giờ đầu-cuối ngày'+(F?' — theo ĐDKD':''), 't16b3', ()=>renderTab16(), K3)}
   <div class="small" style="margin-bottom:8px">Checkin quầy ĐẦU TIÊN trong ngày phải ≤ <b>${m.checkin_cutoff}</b> · Đơn hàng thành công ĐẦU TIÊN trong ngày phải tạo ≤ <b>${m.order_cutoff}</b> · Checkout quầy CUỐI CÙNG trong ngày phải ≥ <b>${m.checkout_cutoff}</b> (check out trước ${m.checkout_cutoff} là vi phạm) — các cột KHÔNG ghi LK đếm CỦA CHÍNH NGÀY ĐANG XEM (<b>${snap.ngay_cutoff}</b>, không LK) · VT đủ giờ / VT ngắn = số LƯỢT viếng thăm đạt / chưa đạt thời lượng tối thiểu (<b>${m.vt_ngan_mbs_phut} phút</b> với CH tham gia Hội viên MBS, <b>${m.vt_ngan_max_phut} phút</b> với CH còn lại — tính từ lúc bắt đầu đến kết thúc viếng thăm), các cột ghi LK tính từ đầu tháng đến ${snap.ngay_cutoff} · Khoảng cách CH cuối/liền kề = chênh lệch giờ check out giữa 2 lượt viếng thăm cuối cùng trong ngày (chỉ mang tính quan sát, chưa tính vào xếp loại vi phạm) · Bấm ▸ để sổ xuống NPP → SS → ĐDKD</div>
   <div class="kpi-row">
     <div class="kpi accent c-${t16Band(t16pctFrac(t.n_checkin_ddkd_dat,t.n_tong),90,70,50)}"><div class="lbl">ĐDKD checkin đúng quy định</div><div class="val">${fmt(t.n_checkin_ddkd_dat)}/${fmt(t.n_tong)}</div><div class="sub">ngày ${snap.ngay_cutoff}</div></div>
@@ -4100,10 +4183,10 @@ function t16Section3Table(){
     </label>
     <div class="chips" style="margin:0 0 0 auto"><button class="chip${t16FltGps?' active':''}" onclick="window.__t16FltGps(${t16FltGps?'false':'true'})">📍 CH sai GPS &gt;${m.gps_sai_m}m (${fmt(t16NGps)})</button><button class="chip${t16FltLan?' active':''}" onclick="window.__t16FltLan(${t16FltLan?'false':'true'})">🔁 CH check out ≥2 lần (${fmt(t16NLan)})</button></div>
   </div>
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>Checkin ≤${m.checkin_cutoff}</th><th>Đơn đầu ≤${m.order_cutoff}</th><th>VT đủ giờ</th><th>VT ngắn</th><th>VT đủ giờ (LK)</th><th>VT ngắn (LK)</th><th>Checkout ≥${m.checkout_cutoff}</th><th>CH sai GPS &gt;${m.gps_sai_m}m</th><th>CH check out ≥2 lần</th><th>KC CH cuối/liền kề</th></tr></thead><tbody>
-  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}<td>${fmt(t.n_checkin_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_order_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_vt_dat5_ngay)}</td><td>${fmt(t.n_vt_ngan_ngay)}</td><td>${fmt(t.n_vt_dat5)}</td><td>${fmt(t.n_vt_ngan)}</td><td>${fmt(t.n_checkout_ddkd_dat)}/${fmt(t.n_tong)}</td>${t16GpsLanCells(tG,tL)}<td>${t.avg_gap_last2_min==null?'—':t.avg_gap_last2_min+' phút'} <span class="small" style="opacity:.65">(${fmt(t.n_co_gap)} ĐDKD)</span></td></tr>
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}${topfThSel(TH3, sel3)}</tr></thead><tbody>
+  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}${topfCols(`<td>${fmt(t.n_checkin_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_order_ddkd_dat)}/${fmt(t.n_tong)}</td><td>${fmt(t.n_vt_dat5_ngay)}</td><td>${fmt(t.n_vt_ngan_ngay)}</td><td>${fmt(t.n_vt_dat5)}</td><td>${fmt(t.n_vt_ngan)}</td><td>${fmt(t.n_checkout_ddkd_dat)}/${fmt(t.n_tong)}</td>${t16GpsLanCells(tG,tL)}<td>${t.avg_gap_last2_min==null?'—':t.avg_gap_last2_min+' phút'} <span class="small" style="opacity:.65">(${fmt(t.n_co_gap)} ĐDKD)</span></td>`, sel3 ? sel3.cols : null)}</tr>
   ${F ? fr.html : t16Tree('t16b3', snap, t16NppAgg3, t16Cells3Agg, t16Cells3Leaf, t16VisitDetailRow)}
-  </tbody></table></div>${F ? topfNote('t16b3', fr.n, '%tuân thủ giờ đầu ngày') : ''}</div>`;
+  </tbody></table></div>${F ? topfNote('t16b3', fr.n, sel3 ? sel3.metric : '%tuân thủ giờ đầu ngày') : ''}</div>`;
   return html;
 }
 // ---- Bang 3b: Ngay cong hop le (3D) ----
@@ -4120,8 +4203,17 @@ function t16Cells4Leaf(d){ const hl = !d.c_co_lich ? '<span class="pctc gray">�
 function t16Section3bTable(){
   const snap = t16Snap(), t = snap.tong, m = KLBH.meta;
   const ng = m.ngay_cong_nguong_pct;
-  const F = topfOn('t16b4'), fr = F ? t16FlatRows('t16b4', snap, d=>d.pct_3d_lk, t16Cells4Leaf, 18) : null;
-  return `<div class="card">${topfHead('3b. Ngày công (NC) hợp lệ theo 4Đ'+(F?' — theo ĐDKD':''), 't16b4', ()=>renderTab16())}
+  const F = topfOn('t16b4');
+  const K4 = [
+    {id:'ngay', label:'4Đ ngày đang xem', cols:[0,1,2,3,4,5,6,7], val:d=>d.c_pct3d, metric:'%KH đạt 4Đ của ngày đang xem'},
+    {id:'lk', label:'4Đ luỹ kế (LK)', cols:[8,9,10], val:d=>d.pct_3d_lk, metric:'%KH đạt 4Đ (LK)'},
+    {id:'nc', label:'Ngày công hợp lệ (LK)', cols:[11,12,13], val:d=>d.pct_ngay_hl, metric:'%ngày công hợp lệ (LK)'}
+  ];
+  K4.dflt = '%KH đạt 4Đ (LK)';
+  const sel4 = F ? topfKpiSel('t16b4', K4) : null;
+  const TH4 = ['KH OFF có lịch','Đúng lịch','Đúng KH','Đủ TG','Đúng KC','Đạt 4Đ','% 4Đ','NC hợp lệ','KH OFF có lịch (LK)','Đạt 4Đ (LK)','% 4Đ (LK)','NC hợp lệ (LK)','NC có lịch (LK)','% NC hợp lệ'].map(x=>'<th>'+x+'</th>');
+  const fr = F ? t16FlatRows('t16b4', snap, sel4 ? sel4.val : d=>d.pct_3d_lk, sel4 ? (d=>topfCols(t16Cells4Leaf(d), sel4.cols)) : t16Cells4Leaf, 4+(sel4?sel4.cols.length:14)) : null;
+  return `<div class="card">${topfHead('3b. Ngày công (NC) hợp lệ theo 4Đ'+(F?' — theo ĐDKD':''), 't16b4', ()=>renderTab16(), K4)}
   <div class="small" style="margin-bottom:8px">Theo CV KPI lương T10: ĐDKD khi ghé thăm khách hàng <b>kênh OFF</b> phải đảm bảo 4Đ — một ngày công chỉ <b>hợp lệ</b> khi có từ <b>${ng}%</b> số khách hàng <b>OFF</b> có lịch trong ngày đạt cả <b>4Đ</b> (CH kênh ON không xét) — <b>Đúng lịch</b> (viếng thăm đúng tuyến MCP) · <b>Đúng khách hàng</b> (ĐDKD có quét QR Visit tại CH — lấy từ file Lịch sử viếng thăm cửa hàng) · <b>Đủ thời gian</b> (≥${m.vt_ngan_mbs_phut} phút với CH tham gia Hội viên MBS, ≥${m.vt_ngan_max_phut} phút với CH còn lại) · <b>Đúng khoảng cách (KC)</b> (checkin cách quầy ≤${m.gps_sai_m}m). %4Đ = KH đạt cả 4Đ / KH OFF có lịch · Các cột đầu đếm CỦA NGÀY ĐANG XEM (<b>${snap.ngay_cutoff}</b>), 6 cột sau LK đến ${snap.ngay_cutoff} (Ngày công hợp lệ / Ngày có lịch) · Bấm ▸ để sổ xuống NPP → SS → ĐDKD</div>
   <div class="kpi-row">
     <div class="kpi accent c-${t16Band(t.c_pct3d,90,70,50)}"><div class="lbl">% KH đạt 4Đ (ngày)</div><div class="val">${t16pct(t.c_pct3d)}</div><div class="sub">${fmt(t.c_dat3d)}/${fmt(t.c_kh)} KH OFF có lịch ngày ${snap.ngay_cutoff}</div></div>
@@ -4129,27 +4221,39 @@ function t16Section3bTable(){
     <div class="kpi accent c-${t16Band(t.pct_3d_lk,90,70,50)}"><div class="lbl">% KH đạt 4Đ (LK)</div><div class="val">${t16pct(t.pct_3d_lk)}</div><div class="sub">${fmt(t.lk_dat3d)}/${fmt(t.lk_kh_off)} KH OFF có lịch LK</div></div>
     <div class="kpi accent c-${t16Band(t.pct_ngay_hl,95,85,70)}"><div class="lbl">NC hợp lệ (LK)</div><div class="val">${fmt(t.lk_ngay_hl)}/${fmt(t.lk_ngay_lich)}</div><div class="sub">${t16pct(t.pct_ngay_hl)} NC có lịch</div></div>
   </div>
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}<th>KH OFF có lịch</th><th>Đúng lịch</th><th>Đúng KH</th><th>Đủ TG</th><th>Đúng KC</th><th>Đạt 4Đ</th><th>% 4Đ</th><th>NC hợp lệ</th><th>KH OFF có lịch (LK)</th><th>Đạt 4Đ (LK)</th><th>% 4Đ (LK)</th><th>NC hợp lệ (LK)</th><th>NC có lịch (LK)</th><th>% NC hợp lệ</th></tr></thead><tbody>
-  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}${t16Cells4Agg({c_kh:t.c_kh,c_dung_lich:t.c_dung_lich,c_dung_kh:t.c_dung_kh,c_du_tg:t.c_du_tg,c_dung_kc:t.c_dung_kc,c_dat3d:t.c_dat3d,c_pct3d:t.c_pct3d,n_c_hop_le:t.n_c_hop_le,n_c_co_lich:t.n_c_co_lich,lk_kh_off:t.lk_kh_off,lk_dat3d:t.lk_dat3d,pct_3d_lk:t.pct_3d_lk,lk_ngay_hl:t.lk_ngay_hl,lk_ngay_lich:t.lk_ngay_lich,pct_ngay_hl:t.pct_ngay_hl})}</tr>
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${SSID_TH}${topfThSel(TH4, sel4)}</tr></thead><tbody>
+  <tr class="t8-total-row">${ssIdTotalTd(t16TotalLabel(), snap.n_ddkd)}${topfCols(t16Cells4Agg({c_kh:t.c_kh,c_dung_lich:t.c_dung_lich,c_dung_kh:t.c_dung_kh,c_du_tg:t.c_du_tg,c_dung_kc:t.c_dung_kc,c_dat3d:t.c_dat3d,c_pct3d:t.c_pct3d,n_c_hop_le:t.n_c_hop_le,n_c_co_lich:t.n_c_co_lich,lk_kh_off:t.lk_kh_off,lk_dat3d:t.lk_dat3d,pct_3d_lk:t.pct_3d_lk,lk_ngay_hl:t.lk_ngay_hl,lk_ngay_lich:t.lk_ngay_lich,pct_ngay_hl:t.pct_ngay_hl}), sel4 ? sel4.cols : null)}</tr>
   ${F ? fr.html : t16Tree('t16b4', snap, t16NppAgg4, t16Cells4Agg, t16Cells4Leaf, null)}
-  </tbody></table></div>${F ? topfNote('t16b4', fr.n, '%KH đạt 4Đ (LK)') : ''}</div>`;
+  </tbody></table></div>${F ? topfNote('t16b4', fr.n, sel4 ? sel4.metric : '%KH đạt 4Đ (LK)') : ''}</div>`;
 }
 function t16DdkdOptions(){ return sortBySSOrder(t16SnapRaw().ss_list.slice(), s=>s.ss).map(s=>s.ss); }
 function t16Section4(){
   const m = KLBH.meta, snap = t16Snap();
   let rows = snap.ddkd_list.slice();
   rows.sort((a,b)=> (MUCDO_ORDER[a.muc_do]-MUCDO_ORDER[b.muc_do]) || (a.pct_th_vt-b.pct_th_vt));
-  const sub5 = topfSubset('t16b5', rows, d=>MUCDO_ORDER[d.muc_do]*1000 + d.pct_th_vt, null);
+  const K5 = [
+    {id:'vt', label:'%TH VT (LK)', c:3, val:d=>d.pct_th_vt, metric:'%TH viếng thăm (LK)'},
+    {id:'lich', label:'%Đúng lịch', c:4, val:d=>d.pct_lich_lk, metric:'%Đúng lịch (LK)'},
+    {id:'kh', label:'%Đúng KH', c:5, val:d=>d.pct_kh_lk, metric:'%Đúng khách hàng (LK)'},
+    {id:'tg', label:'%Đủ TG', c:6, val:d=>d.pct_tg_lk, metric:'%Đủ thời gian (LK)'},
+    {id:'kc', label:'%Đúng KC', c:7, val:d=>d.pct_kc_lk, metric:'%Đúng khoảng cách (LK)'},
+    {id:'tt', label:'%Đơn trái tuyến', c:8, val:d=>d.pct_don_tt==null ? null : 100-d.pct_don_tt, metric:'%đơn trái tuyến (càng thấp càng tốt)'},
+    {id:'gio', label:'%Tuân thủ giờ đầu ngày', c:9, val:d=>d.pct_gio_giac, metric:'%tuân thủ giờ đầu ngày'}
+  ];
+  K5.forEach(k=>{ k.cols = [0,1,2,k.c,10]; });
+  K5.dflt = 'mức độ kỷ luật rồi %TH VT (LK)';
+  const sel5 = topfOn('t16b5') ? topfKpiSel('t16b5', K5) : null;
+  const sub5 = topfSubset('t16b5', rows, sel5 ? sel5.val : d=>MUCDO_ORDER[d.muc_do]*1000 + d.pct_th_vt, null);
   const allRows5 = rows;
   if(sub5) rows = sub5.list;
   const nVp = allRows5.filter(d=>d.is_vi_pham).length;
   let html = `<div class="card">
-  ${topfHead(`🚨 Danh sách xếp loại kỷ luật bán hàng — cấp ĐDKD (${fmt(rows.length)}${(t16IsFiltered()||sub5)?'/'+fmt(sub5?allRows5.length:t16SnapRaw().ddkd_list.length):''}) <span class="small" style="font-weight:400">— LK đến ${snap.ngay_cutoff}</span>`, 't16b5', ()=>renderTab16())}
+  ${topfHead(`🚨 Danh sách xếp loại kỷ luật bán hàng — cấp ĐDKD (${fmt(rows.length)}${(t16IsFiltered()||sub5)?'/'+fmt(sub5?allRows5.length:t16SnapRaw().ddkd_list.length):''}) <span class="small" style="font-weight:400">— LK đến ${snap.ngay_cutoff}</span>`, 't16b5', ()=>renderTab16(), K5)}
   <div class="t8f-recov-banner"><b>Tiêu chí "cần chấn chỉnh"</b> (7 tiêu chí — chỉ cần dính 1/7 là bị gắn cờ, từ 5/7 trở lên là "vi phạm nghiêm trọng"): %TH viếng thăm LK &lt;${m.nguong_th_vt}% (hoặc đang giảm so ngày trước) · 4Đ (tính trên KH OFF có lịch, LK): %Đúng lịch &lt;${m.nguong_4d_pct}% · %Đúng KH &lt;${m.nguong_4d_pct}% · %Đủ TG &lt;${m.nguong_4d_pct}% · %Đúng KC (checkin cách quầy ≤${m.gps_sai_m}m) &lt;${m.nguong_4d_pct}% · %đơn trái tuyến &gt;${m.nguong_don_tt_pct}% · %tuân thủ giờ đầu ngày &lt;${m.nguong_gio_giac}%. ${fmt(nVp)}/${fmt(allRows5.length)} ĐDKD${t16IsFiltered()?' (trong '+escAttr(t16TotalLabel())+')':''} đang dính ít nhất 1 tiêu chí.</div>
   <div class="small" style="margin:8px 0;opacity:.7">Bộ lọc SS / ĐDKD nằm ở khung trên cùng Tab (áp dụng cho mọi bảng).</div>
-  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr><th class="wrap-npp">SS</th><th>Mã</th><th style="max-width:150px">Tên ĐDKD</th><th>%TH VT (LK)</th><th>%Đúng lịch</th><th>%Đúng KH</th><th>%Đủ TG</th><th>%Đúng KC</th><th>%Đơn trái tuyến</th><th>%Tuân thủ giờ đầu ngày</th><th>Mức độ</th></tr></thead><tbody>
-  ${rows.map(d=>`<tr${tipAttr(t16ddkdTip(d))}><td class="small wrap-npp">${d.ss}</td><td class="small">${d.pos}</td><td class="tenq small" style="max-width:150px" title="${d.ten}">${d.ten}</td><td>${pctc(t16Band(d.pct_th_vt,100,95,90),d.pct_th_vt+'%')}</td><td>${pctc(t16Band(d.pct_lich_lk,100,95,90),t16pct(d.pct_lich_lk))}</td><td>${pctc(t16Band(d.pct_kh_lk,100,95,90),t16pct(d.pct_kh_lk))}</td><td>${pctc(t16Band(d.pct_tg_lk,100,95,90),t16pct(d.pct_tg_lk))}</td><td>${pctc(t16Band(d.pct_kc_lk,100,95,90),t16pct(d.pct_kc_lk))}</td><td>${pctc(t16BandInv(d.pct_don_tt,5,10,20),d.pct_don_tt+'%')}</td><td>${pctc(t16Band(d.pct_gio_giac,50,20,5),t16pct(d.pct_gio_giac))}</td><td>${MUCDO_LABEL[d.muc_do]}</td></tr>`).join('')}
-  </tbody></table></div>${sub5 ? topfNote('t16b5', sub5.n, 'mức độ kỷ luật rồi %TH VT (LK)') : ''}
+  <div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${topfThSel(['<th class="wrap-npp">SS</th>','<th>Mã</th>','<th style="max-width:150px">Tên ĐDKD</th>','<th>%TH VT (LK)</th>','<th>%Đúng lịch</th>','<th>%Đúng KH</th>','<th>%Đủ TG</th>','<th>%Đúng KC</th>','<th>%Đơn trái tuyến</th>','<th>%Tuân thủ giờ đầu ngày</th>','<th>Mức độ</th>'], sel5)}</tr></thead><tbody>
+  ${rows.map(d=>{ const c5 = [`<td class="small wrap-npp">${d.ss}</td>`,`<td class="small">${d.pos}</td>`,`<td class="tenq small" style="max-width:150px" title="${d.ten}">${d.ten}</td>`,`<td>${pctc(t16Band(d.pct_th_vt,100,95,90),d.pct_th_vt+'%')}</td>`,`<td>${pctc(t16Band(d.pct_lich_lk,100,95,90),t16pct(d.pct_lich_lk))}</td>`,`<td>${pctc(t16Band(d.pct_kh_lk,100,95,90),t16pct(d.pct_kh_lk))}</td>`,`<td>${pctc(t16Band(d.pct_tg_lk,100,95,90),t16pct(d.pct_tg_lk))}</td>`,`<td>${pctc(t16Band(d.pct_kc_lk,100,95,90),t16pct(d.pct_kc_lk))}</td>`,`<td>${pctc(t16BandInv(d.pct_don_tt,5,10,20),d.pct_don_tt+'%')}</td>`,`<td>${pctc(t16Band(d.pct_gio_giac,50,20,5),t16pct(d.pct_gio_giac))}</td>`,`<td>${MUCDO_LABEL[d.muc_do]}</td>`]; return `<tr${tipAttr(t16ddkdTip(d))}>${topfArrSel(c5, sel5)}</tr>`; }).join('')}
+  </tbody></table></div>${sub5 ? topfNote('t16b5', sub5.n, sel5 ? sel5.metric : 'mức độ kỷ luật rồi %TH VT (LK)') : ''}
   </div>`;
   return html;
 }
