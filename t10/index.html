@@ -924,7 +924,7 @@ const T1_PROG_ORDER = ['giavi','newaso','meat','cafe','bev','nutri','chante'];
 const T1_PROG_ICON = {giavi:'🧂', newaso:'🍶', meat:'🥩', cafe:'☕', bev:'🧃', nutri:'🥣', chante:'🌸'};
 // v6 (04/10/2026): thêm CT thứ 6 "New ASO Gia vị <2tr" (dạng quà tặng) + bộ lọc khoan sâu giống Tab Trưng bày
 // (SS / ĐDKD / tìm CH / chip trạng thái / chip ngày viếng thăm / breadcrumb / Xóa lọc).
-const T1_FRESH = ()=>({ss:null, ddkd:null, q:'', st:null, vt:null, flat:false, dnl:false});
+const T1_FRESH = ()=>({ss:null, ddkd:null, q:'', st:null, vt:null, flat:false, dnl:false, p70:false});
 let t1state = Object.assign({prog:'giavi'}, T1_FRESH());
 
 function t1Meta(prog){ return T1_PROGS_GROWTH.includes(prog) ? DATA.tab1[prog] : DATA.tab1_kpiobj[prog]; }
@@ -956,7 +956,8 @@ window.__t1clear = function(){ t1state = Object.assign({prog:t1state.prog}, T1_F
 window.__t1stF = function(v){ t1state.st = v; renderTab1Body(); };
 window.__t1vtF = function(v){ t1state.vt = v; renderTab1Body(); };
 window.__t1flat = function(v){ t1state.flat = !!v; renderTab1Body(); };
-window.__t1dnlF = function(v){ t1state.dnl = !!v; renderTab1Body(); };
+window.__t1dnlF = function(v){ t1state.dnl = !!v; if(v) t1state.p70 = false; renderTab1Body(); };
+window.__t1p70F = function(v){ t1state.p70 = !!v; if(v) t1state.dnl = false; renderTab1Body(); };
 let t1SumOnly = false;
 window.__t1SumOnly = function(v){ t1SumOnly = !!v; renderTab1Body(); };
 
@@ -974,8 +975,9 @@ function t1ScopeRows(){
 }
 function t1ApplyChips(rows){
   const f = t1state;
-  return rows.filter(r=> (!f.st || t1St(r)===f.st) && (f.vt===null || (r.vt||'').includes(f.vt)) && (!f.dnl || r.dnl_da));
+  return rows.filter(r=> (!f.st || t1St(r)===f.st) && (f.vt===null || (r.vt||'').includes(f.vt)) && (!f.dnl || r.dnl_da) && (!f.p70 || t1P70(r)));
 }
+function t1P70(r){ const m = r.moc || 1700000; return r.mtd >= 0.7*m && !r.dnl_da; }  // v80: CH mua ≥70% mốc mà CHƯA đăng ký Dnl thùng đá
 function t1FilteredRows(){ return t1ApplyChips(t1ScopeRows()); }
 function t1NoteText(prog){
   const common = 'Doanh số lấy từ Raw_data hằng ngày (Sales Before Discount) — Raw_data có độ lệch khoảng +5-15% tuỳ ngành so với file data.xlsx chính thức của Masan, nên mọi số Thưởng/MTD ở đây CHỈ MANG TÍNH THAM KHẢO theo tiến độ, KHÔNG dùng để chốt lương/thưởng thật (số chính thức theo file data.xlsx công ty gửi riêng). Riêng 3 chương trình tăng trưởng Gia vị / Meat / Café: RR T6-7-8 và MTD T10 đều tính theo cột Sales Distributor Price (doanh số giá NPP) từ file anh gửi 08/10/2026 để cùng một thước đo.';
@@ -1156,10 +1158,12 @@ function t1ChipBars(scope, prog){
   const stList = gift ? ['dat','chua'] : ['dat','chay','chua'];
   const dnlN = scope.filter(r=>r.dnl_da).length;
   const dnlChip = `<button class="chip${f.dnl?' active':''}" onclick="window.__t1dnlF(${f.dnl?'false':'true'})">🧊 Đã ĐK Dnl thùng đá (${fmt(dnlN)})</button>`;
+  const p70N = scope.filter(t1P70).length;
+  const p70Chip = `<button class="chip${f.p70?' active':''}" title="CH có MTD Tea365 ≥ 70% mốc 1.700.000đ (≥ 1.190.000đ, gồm cả CH đã đạt mốc) mà CHƯA đăng ký Dnl thùng đá" onclick="window.__t1p70F(${f.p70?'false':'true'})">📈 Mua ≥70% mốc 1tr7 · chưa ĐK Dnl (${fmt(p70N)})</button>`;
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Trạng thái:</span>
       <div class="chips" style="margin:0">${stChip(null,'Tất cả')}${stList.map(s=>stChip(s,lbl[s])).join('')}</div>
-      ${prog==='bev'?`<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center">Dnl thùng đá:</span>${dnlChip}</div>`:''}
+      ${prog==='bev'?`<div class="chips" style="margin:0 0 0 auto">${p70Chip}<span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-left:8px">Dnl thùng đá:</span>${dnlChip}</div>`:''}
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
@@ -1241,6 +1245,7 @@ function renderTab1Body(){
   if(f.ddkd) crumbs.push(`<a onclick="window.__t1set('ddkd',null)">ĐDKD: ${f.ddkd}</a>`);
   if(f.st) crumbs.push(`<a onclick="window.__t1stF(null)">Trạng thái: ${(t1IsGift(prog)?T1_ST_LABEL_GIFT:T1_ST_LABEL)[f.st]}</a>`);
   if(f.vt!==null) crumbs.push(`<a onclick="window.__t1vtF(null)">Viếng thăm: ${f.vt}</a>`);
+  if(f.p70) crumbs.push(`<a onclick="window.__t1p70F(false)">Mua ≥70% mốc 1tr7, chưa ĐK Dnl</a>`);
   if(f.dnl) crumbs.push(`<a onclick="window.__t1dnlF(false)">Dnl thùng đá: đã đăng ký</a>`);
   const crumbHtml = crumbs.length ? `<div class="breadcrumb"><a onclick="window.__t1clear()">Tất cả</a> › ${crumbs.join(' › ')}</div>` : '';
   const showCh = searching || f.ddkd || f.flat;
