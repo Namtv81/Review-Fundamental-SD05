@@ -2433,6 +2433,7 @@ let t5filters = {ss:null, ddkd:null, ct:null, mucdk:null};
 let t5statusFilter = null; // loc theo Trang thai o bang chi tiet cap quay (dat_chuan/da_chup/chua_chup/null=tat ca)
 let t5visitFilter = null; // loc theo Viengs tham ('Thứ 2'..'Thứ 7'/null=tat ca)
 let t5ddFilter = null; // v41: loc BH DDKD chup ('chup'/'chua'/null)
+function t5d6Pred(r,f){ return f===null || (f==='bk' ? r.banker!=null : f==='dat' ? (r.banker!=null && r.pctth>=100) : r.t9_dat6===f); }  // v81: 'dat' = CH đã đạt Dnl doanh số (MTD ≥ banker)
 let t5dat6Filter = null; // mục153: loc theo da Dat >=6 bo anh duyet o Trung bay THANG 8 (true/false/null=tat ca)
 const T5_STCOLORS = {dat_chuan:'#16a34a', da_chup:'#f59e0b', chua_chup:'#dc2626', tm:'#64748b', tm_dat:'#16a34a', tm_p:'#f59e0b', tm_0:'#dc2626'};
 const T5_STLABEL = {dat_chuan:'Đạt ≥6 bộ', da_chup:'Đã chụp (<6 bộ)', chua_chup:'Chưa chụp', tm:'Tủ mát (chỉ ĐDKD chụp)', tm_dat:'Đạt ≥2 bộ hình đạt', tm_p:'Đã chụp (<2 bộ đạt)', tm_0:'Chưa chụp'};
@@ -2538,7 +2539,7 @@ function renderTab5Body(){
     const rowsC = rows.filter(r=>
       t5stIs(r,t5statusFilter) &&
       (t5visitFilter===null || (r.vt||'').includes(t5visitFilter)) &&
-      (t5dat6Filter===null || (t5dat6Filter==='bk' ? r.banker!=null : r.t9_dat6===t5dat6Filter)) &&
+      t5d6Pred(r,t5dat6Filter) &&
       (t5ddFilter===null || (t5ddFilter==='chup' ? (r.dd_chup||0)>0 : (r.dd_chup||0)===0)));
     const cC = t5statCounts(rowsC);
     const tmView = rowsC.length>0 && rowsC.every(r=>r.st==='tm');   // v70: đang xem riêng CT Tủ mát (chỉ ĐDKD chụp) -> chỉ hiện Tracking bộ hình ĐDKD, không có Đạt/Đã chụp/Chưa chụp
@@ -2546,7 +2547,7 @@ function renderTab5Body(){
     const chipFiltered = !!t5statusFilter || t5visitFilter!==null || t5dat6Filter!==null || t5ddFilter!==null;
     const aStChip = (st,label)=>{ const cnt = st ? rows.filter(r=>t5stIs(r,st)).length : rows.length; return `<button class="chip${t5statusFilter===st?' active':''}" onclick="window.__t5statusFilter(${st?`'${st}'`:'null'})">${label} (${fmt(cnt)})</button>`; };
     const aVtChip = (val,label)=>{ const cnt = val===null ? rows.length : rows.filter(r=>(r.vt||'').includes(val)).length; return `<button class="chip${t5visitFilter===val?' active':''}" onclick="window.__t5visitFilter(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`; };
-    const aDd6Chip = (val,label)=>{ const cnt = val===null ? rows.length : (val==='bk' ? rows.filter(r=>r.banker!=null).length : rows.filter(r=>r.t9_dat6===val).length); return `<button class="chip${t5dat6Filter===val?' active':''}" onclick="window.__t5dat6Filter(${val===null?'null':(val==='bk'?"'bk'":val)})">${label} (${fmt(cnt)})</button>`; };
+    const aDd6Chip = (val,label)=>{ const cnt = val===null ? rows.length : rows.filter(r=>t5d6Pred(r,val)).length; return `<button class="chip${t5dat6Filter===val?' active':''}" onclick="window.__t5dat6Filter(${val===null?'null':(typeof val==='string'?"'"+val+"'":val)})">${label} (${fmt(cnt)})</button>`; };
     const aDdChip = (val,label)=>{ const cnt = val==='chup' ? rows.filter(r=>(r.dd_chup||0)>0).length : rows.filter(r=>(r.dd_chup||0)===0).length; return `<button class="chip${t5ddFilter===val?' active':''}" onclick="window.__t5ddFilter(${t5ddFilter===val?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`; };
     const aggFilterHtml = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 6px">
       <span class="small" style="color:var(--sub);font-weight:600">${rowsAllTm?'Lọc suất Tủ mát:':'Lọc suất Tbay:'}</span>
@@ -2557,7 +2558,7 @@ function renderTab5Body(){
       <div class="chips" style="margin:0">${aVtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>aVtChip(d,d)).join('')}</div></div>
     ${rowsAllTm?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Tbay T9 (đã đóng) — điều kiện "Dnl doanh số":</span>
-      <div class="chips" style="margin:0">${aDd6Chip(null,'Tất cả')}${aDd6Chip(true,'🏆 Đạt ≥6 (đủ ĐK)')}${aDd6Chip(false,'Chưa đạt ≥6')}${aDd6Chip('bk','💰 Có banker doanh số')}</div></div>`}
+      <div class="chips" style="margin:0">${aDd6Chip(null,'Tất cả')}${aDd6Chip(true,'🏆 Đạt ≥6 (đủ ĐK)')}${aDd6Chip(false,'Chưa đạt ≥6')}${aDd6Chip('bk','💰 Có banker doanh số')}${aDd6Chip('dat','✅ Đã đạt Dnl doanh số')}</div></div>`}
     ${chipFiltered ? `<div class="small" style="margin-bottom:6px;color:#b45309"><b>Đang lọc:</b> biểu đồ và bảng bên dưới chỉ tính ${fmt(rowsC.length)}/${fmt(rows.length)} suất Tbay phù hợp (bộ lọc được giữ khi anh bấm khoan xuống SS → ĐDKD → quầy; thẻ KPI phía trên vẫn là tổng của phạm vi đang xem).</div>` : ''}`;
     const map = {};
     rowsC.forEach(r=>{
@@ -2628,7 +2629,7 @@ function renderTab5Body(){
     const sorted = allSorted.filter(r=>
       t5stIs(r,t5statusFilter) &&
       (t5visitFilter===null || (r.vt||'').includes(t5visitFilter)) &&
-      (t5dat6Filter===null || (t5dat6Filter==='bk' ? r.banker!=null : r.t9_dat6===t5dat6Filter)) &&
+      t5d6Pred(r,t5dat6Filter) &&
       (t5ddFilter===null || (t5ddFilter==='chup' ? (r.dd_chup||0)>0 : (r.dd_chup||0)===0))
     );
     const filtered = !!t5statusFilter || t5visitFilter!==null || t5dat6Filter!==null || t5ddFilter!==null;
@@ -2644,9 +2645,9 @@ function renderTab5Body(){
     };
     // mục153: chip loc theo da/chua Dat >=6 bo anh duyet o Trung bay THANG 8 (du/khong du DK "Dnl doanh so")
     const dat6Chip = (val,label)=>{
-      const cnt = val===null ? allSorted.length : (val==='bk' ? allSorted.filter(r=>r.banker!=null).length : allSorted.filter(r=>r.t9_dat6===val).length);
+      const cnt = val===null ? allSorted.length : allSorted.filter(r=>t5d6Pred(r,val)).length;
       const active = t5dat6Filter===val;
-      return `<button class="chip${active?' active':''}" onclick="window.__t5dat6Filter(${val===null?'null':(val==='bk'?"'bk'":val)})">${label} (${cnt})</button>`;
+      return `<button class="chip${active?' active':''}" onclick="window.__t5dat6Filter(${val===null?'null':(typeof val==='string'?"'"+val+"'":val)})">${label} (${cnt})</button>`;
     };
     const ddChip = (val,label)=>{
       const cnt = val==='chup' ? allSorted.filter(r=>(r.dd_chup||0)>0).length : allSorted.filter(r=>(r.dd_chup||0)===0).length;
@@ -2686,6 +2687,7 @@ function renderTab5Body(){
         ${dat6Chip(true,'🏆 Đạt ≥6 (đủ ĐK)')}
         ${dat6Chip(false,'Chưa đạt ≥6')}
         ${dat6Chip('bk','💰 Có banker doanh số')}
+        ${dat6Chip('dat','✅ Đã đạt Dnl doanh số')}
       </div>
     </div>
     <div class="tbl-scroll"><table class="tbl-compact"><thead><tr><th class="small">Viếng thăm</th><th style="max-width:322px">Chương trình</th><th style="max-width:100px">Mức ĐK</th><th>Code</th><th style="max-width:110px">Tên CH</th><th class="small">BA Chụp</th><th class="small">BA Duyệt</th><th>Trạng thái</th><th>Tbay T9</th><th>Banker DS</th><th>MTD</th><th>%TH</th><th>Thưởng</th><th>BH ĐDKD chụp</th></tr></thead><tbody>
