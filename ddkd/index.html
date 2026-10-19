@@ -2997,11 +2997,22 @@ function t6tvOne(o,k){
 }
 const T6_TV_TH_TEA = '<th>CT SO<br>Tea</th><th>MTD<br>Tea</th><th>%TH<br>Tea</th><th>VPO<br>Tea</th>';
 const T6_TV_TH_HM = '<th>CT SO<br>Homey 2,9kg</th><th>MTD<br>Homey 2,9kg</th><th>%TH<br>Homey 2,9kg</th><th>VPO<br>Homey 2,9kg</th>';
+// v82: ASO Tea ON (CH kênh ON có ≥1 line MOQ Tea 365) + %TH = ASO Tea ON ÷ CT ASO Xanh — chuyển từ Bảng 2 sang bảng ASO Trận Vàng · Xanh
+function t6teaOnOf(o){
+  if(o.aso_tea_on!=null) return o.aso_tea_on;
+  const src = o.level==='tong' ? T6V2.tong : (o.level==='ss' ? T6V2.ss_list.find(s=>s.ss===o.label) : null);
+  return src ? (src.aso_tea_on||0) : 0;
+}
+function t6teaOnTd(o){
+  const n = t6teaOnOf(o), den = (o.aso_xanh_t!=null ? o.aso_xanh_t : o.xanh_ct);
+  const pct = den>0 ? Math.round(1000*n/den)/10 : null;
+  return `<td style="font-weight:700"${den>0?` title="ASO Tea ON ${fmt(n)} ÷ CT ASO Xanh ${fmt(den)}"`:''}>${fmt(n)}</td><td>${pct==null?'—':pctc(color_for_pct_js(pct), '<strong>'+pct+'%</strong>')}</td>`;
+}
 const T6_GS = [
-  {id:'xanh', label:'Trận Xanh Tea', th:'<th>ASO Xanh</th><th>CT Xanh</th><th>% Xanh</th>'+T6_TV_TH_TEA, td:d=>`<td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>`+t6tvOne(d,'tea'), val:d=>d.tran_xanh_pct, note:'% ASO Trận Xanh (Tea 365) — kèm doanh số Tea 365'},
+  {id:'xanh', label:'Trận Xanh Tea', th:'<th>ASO Xanh</th><th>CT Xanh</th><th>% Xanh</th><th title="Số CH kênh ON thuộc MCP của ĐDKD có ≥1 line MOQ Trà Búp Non Tea 365 (không tính quà tặng)">ASO<br>Tea ON</th><th title="ASO Tea ON ÷ CT ASO Xanh">%TH<br>Tea ON</th>'+T6_TV_TH_TEA, td:d=>`<td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>`+t6teaOnTd(d)+t6tvOne(d,'tea'), val:d=>d.tran_xanh_pct, note:'% ASO Trận Xanh (Tea 365) — kèm ASO Tea ON và doanh số Tea 365'},
   {id:'vang', label:'Trận Vàng Homey 2,9kg', th:'<th>ASO Vàng</th><th>CT Vàng</th><th>% Vàng</th>'+T6_TV_TH_HM, td:d=>`<td>${fmt(d.aso_vang)}</td><td>${fmt(d.aso_vang_t)}</td><td>${pctc(color_for_pct_js(d.tran_vang_pct), '<strong>'+(d.tran_vang_pct)+'%</strong>')}</td>`+t6tvOne(d,'hm'), val:d=>d.tran_vang_pct, note:'% ASO Trận Vàng (Homey 2,9kg) — kèm doanh số Homey 2,9kg'}];
 T6_GS.dflt = 'ASO Trận Xanh + Vàng';
-function t6asoNorm(r){ return Object.assign({}, r, {aso_xanh:r.xanh, aso_xanh_t:r.xanh_ct, tran_xanh_pct:r.xanh_pct, aso_vang:r.vang, aso_vang_t:r.vang_ct, tran_vang_pct:r.vang_pct}); }
+function t6asoNorm(r){ return Object.assign({}, r, {aso_xanh:r.xanh, aso_xanh_t:r.xanh_ct, tran_xanh_pct:r.xanh_pct, aso_vang:r.vang, aso_vang_t:r.vang_ct, tran_vang_pct:r.vang_pct, aso_tea_on:t6teaOnOf(r)}); }
 function t6asoRollupTable(ssname){
   // vong 42: co ssname -> khoan sau toi cap DDKD trong 1 SS (truoc do chi co ASM + SS, bam vao SS lai nhay sang trang khac);
   // khong co ssname -> giu nguyen cap ASM + 9 SS nhu cu
@@ -3033,21 +3044,21 @@ function t6asoRollupTable(ssname){
       const tip = r.level==='ss' ? tipAttr(t6ssTip(T6V2.ss_list.find(s=>s.ss===r.label))) : '';
       const idTd = r.level==='tong' ? ssIdTotalTd(r.label, r.ddkd_count) : ssIdTd(r.label, r.ddkd_count);
       tableHtml += `<tr${clickable}${tip}>${idTd}
-        <td>${fmt(r.xanh)}</td><td>${fmt(r.xanh_ct)}</td><td>${pctc(color_for_pct_js(r.xanh_pct), '<strong>'+(r.xanh_pct)+'%</strong>')}</td>${t6tvOne(r,'tea')}
+        <td>${fmt(r.xanh)}</td><td>${fmt(r.xanh_ct)}</td><td>${pctc(color_for_pct_js(r.xanh_pct), '<strong>'+(r.xanh_pct)+'%</strong>')}</td>${t6teaOnTd(r)}${t6tvOne(r,'tea')}
         <td>${fmt(r.vang)}</td><td>${fmt(r.vang_ct)}</td><td>${pctc(color_for_pct_js(r.vang_pct), '<strong>'+(r.vang_pct)+'%</strong>')}</td>${t6tvOne(r,'hm')}</tr>`;
     });
   } else {
     const ss = T6V2.ss_list.find(s=>s.ss===ssname);
     tableHtml += `<tr class="t8-total-row"><td><strong>★ TỔNG ${ssname}</strong></td><td>${ddkdPool.length} NV</td>
-      <td>${fmt(ss.aso_xanh)}</td><td>${fmt(ss.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(ss.tran_xanh_pct), '<strong>'+(ss.tran_xanh_pct)+'%</strong>')}</td>${t6tvOne(ss,'tea')}
+      <td>${fmt(ss.aso_xanh)}</td><td>${fmt(ss.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(ss.tran_xanh_pct), '<strong>'+(ss.tran_xanh_pct)+'%</strong>')}</td>${t6teaOnTd(ss)}${t6tvOne(ss,'tea')}
       <td>${fmt(ss.aso_vang)}</td><td>${fmt(ss.aso_vang_t)}</td><td>${pctc(color_for_pct_js(ss.tran_vang_pct), '<strong>'+(ss.tran_vang_pct)+'%</strong>')}</td>${t6tvOne(ss,'hm')}</tr>`;
     ddkdPool.slice().sort((a,b)=>b.ds-a.ds).forEach(d=>{
       tableHtml += `<tr class="rowclick" onclick="window.__t6goDDKD('${d.ma_full}')"${tipAttr(t6ddkdTip(d))}><td>${d.ten}</td><td class="small">${d.ma}</td>
-        <td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>${t6tvOne(d,'tea')}
+        <td>${fmt(d.aso_xanh)}</td><td>${fmt(d.aso_xanh_t)}</td><td>${pctc(color_for_pct_js(d.tran_xanh_pct), '<strong>'+(d.tran_xanh_pct)+'%</strong>')}</td>${t6teaOnTd(d)}${t6tvOne(d,'tea')}
         <td>${fmt(d.aso_vang)}</td><td>${fmt(d.aso_vang_t)}</td><td>${pctc(color_for_pct_js(d.tran_vang_pct), '<strong>'+(d.tran_vang_pct)+'%</strong>')}</td>${t6tvOne(d,'hm')}</tr>`;
     });
   }
-  tableHtml += '</tbody></table><div class="small" style="margin-top:6px;opacity:.8">Tea = Trà Búp Non TEA365 (5 SKU, Trận Xanh) · Homey 2,9kg = SKU 5061 (Trận Vàng). CT SO = chỉ tiêu doanh số (triệu đ, theo file Target by SKU × SM) · MTD = Sales Before Discount lũy kế (triệu đ, không tính dòng quà tặng) · %TH = MTD ÷ CT SO · VPO = MTD ÷ ASO của nhóm hàng (nghìn đ/quầy).</div>';
+  tableHtml += '</tbody></table><div class="small" style="margin-top:6px;opacity:.8">Tea = Trà Búp Non TEA365 (5 SKU, Trận Xanh) · Homey 2,9kg = SKU 5061 (Trận Vàng). CT SO = chỉ tiêu doanh số (triệu đ, theo file Target by SKU × SM) · MTD = Sales Before Discount lũy kế (triệu đ, không tính dòng quà tặng) · %TH = MTD ÷ CT SO · VPO = MTD ÷ ASO của nhóm hàng (nghìn đ/quầy). <b>ASO Tea ON</b> = số CH kênh ON (thuộc MCP của ĐDKD) có ≥1 line MOQ Trà Búp Non Tea 365, không tính quà tặng · <b>%TH Tea ON</b> = ASO Tea ON ÷ CT ASO Xanh.</div>';
   const asoHead = ssname ? `<h3>${title}</h3>` : topfHead(asoF ? 'ASO Trận Vàng · Xanh — theo ĐDKD (bấm 1 ĐDKD để xem quầy)' : title, 't6aso', ()=>renderTab6Body(), T6_GS);
   return `<div class="card">${asoHead}<div class="tbl-scroll">${tableHtml}</div>${asoF ? topfNote('t6aso', asoFr.n, sS ? sS.note : '%ASO Trận Xanh + Vàng (ASO đạt ÷ ASO chỉ tiêu)') : ''}</div>`;
 }
@@ -3077,15 +3088,11 @@ const T6_GB = [
   {id:'ds', label:'SO', th:'<th>DS TH</th><th>CT</th><th>%HT</th><th>Gap</th>', td:o=>`<td>${trv(o.ds)}</td><td>${trv(o.ct)}</td><td>${pctc(o.color, (o.pct)+'%')}</td>${t6gap(o.pct)}`, val:d=>d.pct, note:'%HT doanh số (DS TH ÷ CT)'},
   {id:'asoall', label:'Quầy All', th:'<th>MCP</th><th>TH ASO All</th><th>%TH ASO All</th>', td:o=>`<td>${fmt(o.aso_all_mcp)}</td><td>${fmt(o.aso_all)}</td><td>${pctc(color_for_pct_js(o.aso_all_ach), (o.aso_all_pct)+'%')}</td>`, val:d=>d.aso_all_pct, note:'%TH ASO All (TH ASO All ÷ MCP)'},
   {id:'off', label:'Quầy OFF', th:'<th>Quầy OFF</th><th>TH ASO OFF</th><th>%TH OFF</th>', td:o=>`<td>${fmt(o.phu_off_total)}</td><td>${fmt(o.phu_off_da)}</td><td>${pctc(color_for_pct_js(o.phu_off_pct), (o.phu_off_pct)+'%')}</td>`, val:d=>(d.phu_off_total>0?d.phu_off_pct:null), note:'%TH OFF (TH ASO OFF ÷ Quầy OFF)'},
-  {id:'on', label:'Quầy ON', th:'<th>Quầy ON</th><th>TH ASO ON</th><th>%TH ON</th>', td:o=>`<td>${fmt(o.phu_on_total)}</td><td>${fmt(o.phu_on_da)}</td><td>${pctc(color_for_pct_js(o.phu_on_pct), (o.phu_on_pct)+'%')}</td>`, val:d=>(d.phu_on_total>0?d.phu_on_pct:null), note:'%TH ON (TH ASO ON ÷ Quầy ON)'},
-  {id:'tea', label:'ASO Tea ON', th:'<th title="Số CH kênh ON thuộc MCP của ĐDKD có ≥1 line MOQ Trà Búp Non Tea 365 (không tính quà tặng)">TH ASO Tea ON</th>', thSel:'<th>Quầy ON</th><th>TH ASO Tea ON</th><th>% Tea ON ÷ Quầy ON</th>',
-   td:o=>`<td title="${o.phu_on_total>0?(100*(o.aso_tea_on||0)/o.phu_on_total).toFixed(1)+'% quầy ON':''}" style="font-weight:700">${fmt(o.aso_tea_on||0)}</td>`,
-   tdSel:o=>`<td>${fmt(o.phu_on_total)}</td><td style="font-weight:700">${fmt(o.aso_tea_on||0)}</td><td style="font-weight:700">${o.phu_on_total>0?(100*(o.aso_tea_on||0)/o.phu_on_total).toFixed(1)+'%':'—'}</td>`,
-   val:d=>(d.phu_on_total>0?100*(d.aso_tea_on||0)/d.phu_on_total:null), note:'% Tea ON ÷ Quầy ON (TH ASO Tea ON ÷ Quầy ON)'}];
+  {id:'on', label:'Quầy ON', th:'<th>Quầy ON</th><th>TH ASO ON</th><th>%TH ON</th>', td:o=>`<td>${fmt(o.phu_on_total)}</td><td>${fmt(o.phu_on_da)}</td><td>${pctc(color_for_pct_js(o.phu_on_pct), (o.phu_on_pct)+'%')}</td>`, val:d=>(d.phu_on_total>0?d.phu_on_pct:null), note:'%TH ON (TH ASO ON ÷ Quầy ON)'}];
 function t6cellsB(o, sel){ return t6td(T6_GB, o, sel); }
 const T6_TH_A = t6th(T6_GA, null);
 const T6_TH_B = t6th(T6_GB, null);
-const T6_NOTE_ASO = '<div class="small" style="margin-top:6px;opacity:.8">ASO = số CH thuộc MCP của ĐDKD có ≥1 line thỏa MOQ (không tính dòng quà tặng). ASO_ALL = OFF + ON, chuẩn <b>≥80% MCP</b>; màu ở cột %TH ASO All tính theo % đạt so với chuẩn 80%. <b>Gap</b> = %HT − %time gone (nhịp ngày công), đơn vị điểm %: dương = vượt nhịp, âm = chậm nhịp. <b>TH ASO Tea ON</b> = số CH kênh ON (thuộc MCP của ĐDKD) có ≥1 line MOQ Trà Búp Non Tea 365, không tính quà tặng (rê chuột để xem % trên quầy ON).</div>';
+const T6_NOTE_ASO = '<div class="small" style="margin-top:6px;opacity:.8">ASO = số CH thuộc MCP của ĐDKD có ≥1 line thỏa MOQ (không tính dòng quà tặng). ASO_ALL = OFF + ON, chuẩn <b>≥80% MCP</b>; màu ở cột %TH ASO All tính theo % đạt so với chuẩn 80%. <b>Gap</b> = %HT − %time gone (nhịp ngày công), đơn vị điểm %: dương = vượt nhịp, âm = chậm nhịp.</div>';
 function t6ssTable(){
   const T = T6V2.tong, list = sortBySSOrder(T6V2.ss_list.slice(), s=>s.ss);
   const onclick = s=>`class="rowclick" onclick="window.__t6goSS('${s.ss.replace(/'/g,"\\'")}')"${tipAttr(t6ssTip(s))}`;
@@ -3119,10 +3126,10 @@ function t6ddkdTable(ssname){
   a += '</tbody></table></div></div>';
   let b = `<div class="card"><h3>Bảng 2 — Doanh số · ASO theo ĐDKD: MCP · OFF · ON</h3>
   <div class="tbl-scroll"><table class="tbl-compact"><thead><tr><th class="stcell1">Tên NV</th><th class="stcell2">Mã</th>${T6_TH_B}</tr></thead><tbody>
-  <tr class="t8-total-row">${ss ? `<td colspan="2" class="stcell12">TỔNG ${ssname}</td>${t6cellsB(ss)}` : `<td colspan="2" class="stcell12">TỔNG ${ssname}</td><td>${trv(rows.reduce((s,d)=>s+d.ds,0))}</td><td colspan="13"></td>`}</tr>`;
+  <tr class="t8-total-row">${ss ? `<td colspan="2" class="stcell12">TỔNG ${ssname}</td>${t6cellsB(ss)}` : `<td colspan="2" class="stcell12">TỔNG ${ssname}</td><td>${trv(rows.reduce((s,d)=>s+d.ds,0))}</td><td colspan="12"></td>`}</tr>`;
   rows.forEach(d=>{ b += `<tr ${onclick(d)}><td class="stcell1">${d.ten}</td><td class="small stcell2">${d.ma}</td>${t6cellsB(d)}</tr>`; });
   if(ss && ss.vangla_ds>0){
-    b += `<tr style="font-style:italic;opacity:.85"><td colspan="2" class="wrap stcell12">+ NV Vãng Lai (${ss.vangla_note})</td><td>${trv(ss.vangla_ds)}</td><td colspan="13" class="small wrap">Doanh số phát sinh ngoài tuyến ĐDKD, cộng theo đúng NPP phụ trách — không tính %HT/ASO/PC riêng</td></tr>`;
+    b += `<tr style="font-style:italic;opacity:.85"><td colspan="2" class="wrap stcell12">+ NV Vãng Lai (${ss.vangla_note})</td><td>${trv(ss.vangla_ds)}</td><td colspan="12" class="small wrap">Doanh số phát sinh ngoài tuyến ĐDKD, cộng theo đúng NPP phụ trách — không tính %HT/ASO/PC riêng</td></tr>`;
   }
   b += '</tbody></table></div>'+T6_NOTE_ASO+'</div>';
   return a + b;
