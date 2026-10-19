@@ -3099,7 +3099,7 @@ const T6_NOTE_C = '<div class="small" style="margin-top:6px;opacity:.8"><b>CH ON
 const T6_TH_A = t6th(T6_GA, null);
 const T6_TH_B = t6th(T6_GB, null);
 const T6_NOTE_ASO = '<div class="small" style="margin-top:6px;opacity:.8">ASO = số CH thuộc MCP của ĐDKD có ≥1 line thỏa MOQ (không tính dòng quà tặng). ASO_ALL = OFF + ON, chuẩn <b>≥80% MCP</b>; màu ở cột %TH ASO All tính theo % đạt so với chuẩn 80%. <b>Gap</b> = %HT − %time gone (nhịp ngày công), đơn vị điểm %: dương = vượt nhịp, âm = chậm nhịp.</div>';
-function t6ssTable(){
+function t6ssTable(chartHtml){
   const T = T6V2.tong, list = sortBySSOrder(T6V2.ss_list.slice(), s=>s.ss);
   const onclick = s=>`class="rowclick" onclick="window.__t6goSS('${s.ss.replace(/'/g,"\\'")}')"${tipAttr(t6ssTip(s))}`;
   const ddRow = cellsFn => d=>`<tr class="rowclick" onclick="window.__t6goDDKD('${d.ma_full}')"${tipAttr(t6ddkdTip(d))}>${topfIdTd(d.ss, d.ten)}${cellsFn(d)}</tr>`;
@@ -3126,9 +3126,9 @@ function t6ssTable(){
   <tr class="t8-total-row">${ssIdTotalTd('TỔNG ASM', T6V2.meta.so_ddkd)}${t6cellsC(T)}</tr>`;
   if(fc) c += rc.html; else list.forEach(s=>{ c += `<tr ${onclick(s)}>${ssIdTd(s.ss, s.ddkd_count)}${t6cellsC(s)}</tr>`; });
   c += '</tbody></table></div>' + (fc ? topfNote('t6c', rc.n, '%TH CH ON Bev (CH ON ÷ CT 50 CH/ĐDKD)') : '') + T6_NOTE_C + '</div>';
-  return a + b + c;
+  return a + b + (chartHtml||'') + c;
 }
-function t6ddkdTable(ssname){
+function t6ddkdTable(ssname, chartHtml){
   const rows = T6V2.ddkd_list.filter(d=>d.ss===ssname).sort((a,b)=>b.ds-a.ds);
   const ss = T6V2.ss_list.find(s=>s.ss===ssname);
   const onclick = d=>`class="rowclick" onclick="window.__t6goDDKD('${d.ma_full}')"${tipAttr(t6ddkdTip(d))}`;
@@ -3150,7 +3150,7 @@ function t6ddkdTable(ssname){
   <tr class="t8-total-row"><td colspan="2" class="stcell12">TỔNG ${ssname}</td>${ss ? t6cellsC(ss) : '<td colspan="4"></td>'}</tr>`;
   rows.forEach(d=>{ c += `<tr ${onclick(d)}><td class="stcell1">${d.ten}</td><td class="small stcell2">${d.ma}</td>${t6cellsC(d)}</tr>`; });
   c += '</tbody></table></div>'+T6_NOTE_C+'</div>';
-  return a + b + c;
+  return a + b + (chartHtml||'') + c;
 }
 function t6chiSoChiTiet(d){
   return `<div class="card"><h3>Chỉ số chi tiết</h3><div class="kpi-row">
@@ -3173,8 +3173,7 @@ function renderTab6Body(){
     body.innerHTML = `<div class="t6-subhead">Tổng quan khu vực · dữ liệu đến ${T6V2.meta.updated} · nhịp ${T6V2.meta.nhip}%</div>
       ${t6kpiCards(T6V2.tong,'tong')}
       ${t6noteBanner(T6V2.tong,'Toàn vùng')}
-      ${t6ssTable()}
-      <div class="card">${t6chartSS()}</div>
+      ${t6ssTable(`<div class="card">${t6chartSS()}</div>`)}
       ${t6asoRollupTable()}
       ${t6nganhHangTable(T6V2.nganh_hang_tong_v2,'Ngành hàng cộng dồn toàn vùng', true)}${t2nganhHangMatrix()}`;
       // mục292 (03/10/2026): bỏ hẳn mục "Tracking thưởng Tháng 9" (26 chương trình KEOTHUONG9,
@@ -3187,8 +3186,7 @@ function renderTab6Body(){
     body.innerHTML = `<div class="breadcrumb"><a onclick="window.__t6goASM()">★ Tổng ASM</a> › ${ss.ss}</div>
       ${t6kpiCards(ss,'ss')}
       ${t6noteBanner(ss,'Team '+ss.ss)}
-      ${t6ddkdTable(ss.ss)}
-      <div class="card">${t6chartDdkd(ss.ss)}</div>
+      ${t6ddkdTable(ss.ss, `<div class="card">${t6chartDdkd(ss.ss)}</div>`)}
       ${t6asoRollupTable(ss.ss)}
       ${t6nganhHangTable(ss.nganh_hang,'Ngành hàng — '+ss.ss)}`;
   } else {
