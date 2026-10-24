@@ -3806,7 +3806,7 @@ window.__t8toggleSs = function(key,i,j){
 // không phải số chốt quà/thưởng chính thức. Dữ liệu T10 mới đến 13/10/2026 (13 ngày).
 const T14_COMBO_ORDER = ['main','bev','giavi','homey'];
 const T14_COMBO_ICON = {main:'🧾', bev:'🧃', giavi:'🧂', homey:'🧴'};
-const T14_FRESH = ()=>({ss:null, ddkd:null, q:'', vt:null, don:null, flat:false});
+const T14_FRESH = ()=>({ss:null, ddkd:null, q:'', vt:null, don:null, flat:false, st:null});
 let t14state = Object.assign({combo:'main'}, T14_FRESH());
 
 function t14Meta(combo){ return COMBO.meta[combo]; }
@@ -3827,6 +3827,8 @@ window.__t14setQ = function(v){ t14state.q = v; renderTab14Body(); };
 window.__t14clear = function(){ t14state = Object.assign({combo:t14state.combo}, T14_FRESH()); renderTab14Body(); };
 window.__t14vtF = function(v){ t14state.vt = v; renderTab14Body(); };
 window.__t14donF = function(v){ t14state.don = v; renderTab14Body(); };
+window.__t14stF = function(v){ t14state.st = v; renderTab14Body(); };
+window.__t14back = function(){ t14state.flat = false; t14state.st = null; renderTab14Body(); };
 window.__t14flat = function(v){ t14state.flat = !!v; renderTab14Body(); };
 
 function t14ScopeRows(){
@@ -3841,6 +3843,25 @@ function t14ScopeRows(){
   return rows;
 }
 function t14DonBucket(r){ return (r.so_don_dat||0)>=2 ? '2+' : '1'; }
+// v102: danh sách đầy đủ = CH đã đạt + CH tham gia (roster combo) chưa có đơn đạt (chua:true)
+function t14AllList(combo){
+  window.__t14all = window.__t14all || {};
+  if(window.__t14all[combo]) return window.__t14all[combo];
+  const ach = t14RowsOfCombo(combo), seen = new Set(ach.map(r=>String(r.ma)));
+  const extra = t14Roster(combo).filter(r=>!seen.has(String(r.ma))).map(r=>({combo:combo, ma:r.ma, ten:r.ten, ss:r.ss, ddkd:r.ddkd, vt:r.vt, kenh:r.kenh, so_don_ngay:0, so_don_dat:0, ds_don_dat:0, qua_uoc_tinh:0, thuong_tien:0, chua:true}));
+  return (window.__t14all[combo] = ach.concat(extra));
+}
+function t14ScopeAll(){
+  const f = t14state; let rows = t14AllList(f.combo);
+  if(f.q && f.q.trim()){ const q = f.q.trim().toLowerCase(); return rows.filter(r=> String(r.ma).includes(q) || (r.ten||'').toLowerCase().includes(q)); }
+  if(f.ss) rows = rows.filter(r=>r.ss===f.ss);
+  if(f.ddkd) rows = rows.filter(r=>r.ddkd===f.ddkd);
+  return rows;
+}
+function t14ApplyChipsAll(rows){
+  const f = t14state;
+  return rows.filter(r=> (f.st===null || (f.st==='chua')===!!r.chua) && (f.don===null || (!r.chua && t14DonBucket(r)===f.don)) && (f.vt===null || (r.vt||'').includes(f.vt)));
+}
 function t14ApplyChips(rows){
   const f = t14state;
   return rows.filter(r=> (f.don===null || t14DonBucket(r)===f.don) && (f.vt===null || (r.vt||'').includes(f.vt)));
@@ -3861,7 +3882,7 @@ function t14NoteText(combo){
     giavi: `Điều kiện CV dòng 50-51: đơn ĐH ≥ 500.000đ Gia vị (hoặc ≥400.000đ) VÀ (≥200.000đ Nam Ngư Siêu tiết kiệm HOẶC ≥45.000đ Tam Thái Tử Nhị Ca). Kênh ON (Ghi chú CV ghi rõ "kênh On_L2 Quán ăn Nhà hàng").`,
     homey: `Dòng 52 CV: cùng điều kiện chính như combo chính (ĐH ≥800.000đ toàn bộ MSC+HPC trừ NET) VÀ ≥ 280.000đ Homey (toàn bộ brand). Thưởng 20.000đ TIỀN MẶT/đơn (không phải quà sản phẩm). Áp dụng CẢ ON+OFF — Ghi chú CV của dòng này là dòng DUY NHẤT trong 52 dòng KHÔNG ghi chữ "kênh Off/On" nào, nên hiểu là không giới hạn kênh (đã xác nhận theo đúng CV Tháng 10, không dùng giả định OFF-only như bản nháp đầu).`,
   };
-  return `${map[combo]} ${common}`;
+  return `${map[combo]} ${common} <b>Danh sách CH</b> (nút "Xem thẳng danh sách CH", chọn 1 ĐDKD hoặc chip Trạng thái) gồm TOÀN BỘ CH tham gia combo: cột <b>Trạng thái</b> = <b>Đã mua</b> (có ≥1 đơn đạt) / <b>Chưa mua</b> (chưa có đơn đạt). Chọn chip <b>Chưa mua</b> + chip <b>Viếng thăm</b> (Thứ …) + chọn ĐDKD để biết CH nào cần chào bán combo trong ngày.`;
 }
 // v93: Số CH tham gia = CH trong MCP thuộc kênh áp dụng của combo (Combo chính OFF; Bev/Gia vị đặc biệt ON; Homey ON+OFF; không có danh sách import riêng → kéo theo MCP)
 function t14KenhOk(combo, kenh){ return combo==='main' ? kenh==='OFF' : (combo==='homey' ? true : kenh==='ON'); }
@@ -3887,7 +3908,8 @@ function t14KpiRow(combo, rows){
   // v60 (14/10, anh chốt): chỉ tiêu doanh số Combo = giá trị đơn tối thiểu của combo × số suất ước tính (= số đơn đạt); MTD = doanh số trước CK của các đơn đạt
   const part = t14PartScope(combo), nPart = part.length;
   const partBreak = combo==='homey' ? ' (OFF '+fmt(part.filter(r=>r.kenh==='OFF').length)+' · ON '+fmt(part.filter(r=>r.kenh==='ON').length)+')' : '';
-  const partSub = 'Số CH tham gia: <b>'+fmt(nPart)+'</b>'+partBreak+'<br>%TH: <b>'+t14PctTxt(soCh, nPart)+'</b> (CH đạt ÷ CH tham gia)';
+  const achSet = new Set(t14RowsOfCombo(combo).map(r=>String(r.ma))); const nChua = part.filter(r=>!achSet.has(String(r.ma))).length;
+  const partSub = 'Số CH tham gia: <b>'+fmt(nPart)+'</b>'+partBreak+' · CH chưa mua: <b>'+fmt(nChua)+'</b><br>%TH: <b>'+t14PctTxt(soCh, nPart)+'</b> (CH đạt ÷ CH tham gia)';
   const minDon = m.min_don||0, ctCombo = minDon*soDon, avgDon = soDon>0 ? dsDon/soDon : 0;
   const minTxt = minDon>=1e6 ? (minDon/1e6).toLocaleString('vi-VN')+' tr' : (minDon/1e3).toLocaleString('vi-VN')+'k';
   const ovCards = ovThCards(ctCombo, dsDon, 'mốc đơn '+minTxt+' × '+fmt(soDon)+' suất', 'doanh số các đơn đạt Combo (trước CK, bỏ dòng quà) · '+fmt(soDon)+' đơn', 'MTD ÷ (mốc đơn × số suất) · bình quân 1 đơn đạt '+(avgDon/1e6).toLocaleString('vi-VN',{maximumFractionDigits:2})+' tr = gấp '+(minDon>0?(avgDon/minDon).toLocaleString('vi-VN',{maximumFractionDigits:1}):'—')+' lần mốc', 'mốc × suất');
@@ -3918,10 +3940,10 @@ function t14ChTable(combo, rows){
   const rewardHead = m.reward_kind==='tien' ? 'Thưởng tiền (đ)' : 'Số suất quà ước tính';
   const rows_html = capped.map(r=>{
     const rewardVal = m.reward_kind==='tien' ? fmtVnd(r.thuong_tien||0) : fmt(r.qua_uoc_tinh||0);
-    return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],['Viếng thăm',r.vt||'—'],['Đơn combo ngày '+(COMBO.ngay||''),fmt(r.so_don_ngay||0)],['Số đơn đạt',fmt(r.so_don_dat)],[rewardHead, rewardVal]]))}>
-      ${chLeadTd(hideSS, r)}<td>${fmt(r.so_don_ngay||0)}</td><td>${fmt(r.so_don_dat)}</td><td>${rewardVal}</td></tr>`;
-  }).join('') || `<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
-  return `<div class="tbl-scroll" style="max-height:65vh"><table${chTblAttr(hideSS)}><thead><tr>${chLeadTh(hideSS)}<th>Đơn combo ngày ${COMBO.ngay||''}</th><th>Số đơn đạt</th><th>${rewardHead}</th></tr></thead><tbody>${rows_html}</tbody></table></div>${note}`;
+    return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],['Viếng thăm',r.vt||'—'],['Trạng thái',r.chua?'Chưa mua':'Đã mua'],['Đơn combo ngày '+(COMBO.ngay||''),fmt(r.so_don_ngay||0)],['Số đơn đạt',fmt(r.so_don_dat)],[rewardHead, rewardVal]]))}>
+      ${chLeadTd(hideSS, r)}<td>${r.chua?'<span style="color:#b91c1c;font-weight:600">Chưa mua</span>':'<span style="color:#15803d;font-weight:600">Đã mua</span>'}</td><td>${r.chua?'—':fmt(r.so_don_ngay||0)}</td><td>${r.chua?'—':fmt(r.so_don_dat)}</td><td>${r.chua?'—':rewardVal}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" style="text-align:center;padding:20px;color:#888">Không có quầy nào khớp bộ lọc đang chọn.</td></tr>`;
+  return `<div class="tbl-scroll" style="max-height:65vh"><table${chTblAttr(hideSS)}><thead><tr>${chLeadTh(hideSS)}<th>Trạng thái</th><th>Đơn combo ngày ${COMBO.ngay||''}</th><th>Số đơn đạt</th><th>${rewardHead}</th></tr></thead><tbody>${rows_html}</tbody></table></div>${note}`;
 }
 function t14AggTable(rows, key, combo, firstTh, clickKey){
   const m = t14Meta(combo), tien = m.reward_kind==='tien';
@@ -3959,7 +3981,7 @@ function t14AggTable(rows, key, combo, firstTh, clickKey){
 }
 function t14FilterBar(combo){
   const f = t14state;
-  const all = COMBO.rows;   // v48: lọc dùng chung cho mọi combo
+  const all = COMBO.rows.concat(TAB4ROWS);   // v48/v102: lọc dùng chung cho mọi combo, gồm cả ĐDKD chưa có CH đạt
   const ssOpts = DATA.meta.ss_list.filter(ss=>all.some(r=>r.ss===ss));
   const ddPool = [...new Set(all.filter(r=>!f.ss || r.ss===f.ss).map(r=>r.ddkd).filter(Boolean))].sort();
   const sel = (v,cur)=>`<option value="${String(v).replace(/"/g,'&quot;')}"${v===cur?' selected':''}>${v}</option>`;
@@ -3972,17 +3994,26 @@ function t14FilterBar(combo){
       <div class="filter-field" style="min-width:260px"><label>Tìm CH (mã hoặc tên)</label><input type="text" value="${(f.q||'').replace(/"/g,'&quot;')}" placeholder="Nhập mã CH hoặc tên CH, Enter để tìm..." onchange="window.__t14setQ(this.value)"></div>
     </div></div>`;
 }
-function t14ChipBars(scope){
+function t14ChipBars(lscope){
   const f = t14state;
+  const base = f.st===null ? lscope : lscope.filter(r=>(f.st==='chua')===!!r.chua);
+  const stChip = (val,label)=>{
+    const cnt = val===null ? lscope.length : lscope.filter(r=>(val==='chua')===!!r.chua).length;
+    return `<button class="chip${f.st===val?' active':''}" onclick="window.__t14stF(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`;
+  };
   const donChip = (val,label)=>{
-    const cnt = val===null ? scope.length : scope.filter(r=>t14DonBucket(r)===val).length;
+    const cnt = val===null ? base.length : base.filter(r=>!r.chua && t14DonBucket(r)===val).length;
     return `<button class="chip${f.don===val?' active':''}" onclick="window.__t14donF(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`;
   };
   const vtChip = (val,label)=>{
-    const cnt = val===null ? scope.length : scope.filter(r=>(r.vt||'').includes(val)).length;
+    const cnt = val===null ? base.length : base.filter(r=>(r.vt||'').includes(val)).length;
     return `<button class="chip${f.vt===val?' active':''}" onclick="window.__t14vtF(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`;
   };
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <span class="small" style="color:var(--sub);font-weight:600">Trạng thái mua combo:</span>
+      <div class="chips" style="margin:0">${stChip(null,'Tất cả CH tham gia')}${stChip('mua','✅ Đã mua')}${stChip('chua','🎯 Chưa mua (cần chào)')}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Số đơn đạt:</span>
       <div class="chips" style="margin:0">${donChip(null,'Tất cả')}${donChip('1','1 đơn')}${donChip('2+','≥2 đơn')}</div>
     </div>
@@ -3996,26 +4027,28 @@ function renderTab14Body(){
   const body = document.getElementById('t14body');
   const scope = t14ScopeRows();
   const rows = t14ApplyChips(scope);
+  const lscope = t14ScopeAll(), lrows = t14ApplyChipsAll(lscope);
   const searching = !!(f.q && f.q.trim());
   const crumbs = [];
   if(searching) crumbs.push(`<a onclick="window.__t14setQ('')">Tìm: ${f.q.trim()}</a>`);
   if(f.ss) crumbs.push(`<a onclick="window.__t14set('ss',null)">SS: ${f.ss}</a>`);
   if(f.ddkd) crumbs.push(`<a onclick="window.__t14set('ddkd',null)">ĐDKD: ${f.ddkd}</a>`);
   if(f.don!==null) crumbs.push(`<a onclick="window.__t14donF(null)">Số đơn: ${f.don==='1'?'1 đơn':'≥2 đơn'}</a>`);
+  if(f.st!==null) crumbs.push(`<a onclick="window.__t14stF(null)">Trạng thái: ${f.st==='chua'?'Chưa mua':'Đã mua'}</a>`);
   if(f.vt!==null) crumbs.push(`<a onclick="window.__t14vtF(null)">Viếng thăm: ${f.vt}</a>`);
   const crumbHtml = crumbs.length ? `<div class="breadcrumb"><a onclick="window.__t14clear()">Tất cả</a> › ${crumbs.join(' › ')}</div>` : '';
-  const showCh = searching || f.ddkd || f.flat;
+  const showCh = searching || f.ddkd || f.flat || f.st!==null;
   let inner;
   if(showCh){
-    inner = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px"><h3 style="font-size:13.5px;color:var(--sub);margin:0">Chi tiết từng quầy (${fmt(rows.length)}${rows.length!==scope.length?'/'+fmt(scope.length):''} quầy)</h3>${(!searching && !f.ddkd)?`<button class="btn-clear" onclick="window.__t14flat(false)">⬅ Về bảng tổng hợp</button>`:''}</div>` + t14ChTable(combo, rows);
+    inner = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px"><h3 style="font-size:13.5px;color:var(--sub);margin:0">Chi tiết từng quầy (${fmt(lrows.length)}${lrows.length!==lscope.length?'/'+fmt(lscope.length):''} quầy)</h3>${(!searching && !f.ddkd)?`<button class="btn-clear" onclick="window.__t14back()">⬅ Về bảng tổng hợp</button>`:''}</div>` + t14ChTable(combo, lrows);
   } else {
     const agg = !f.ss ? t14AggTable(rows, 'ss', combo, SSID_TH, 'ss') : t14AggTable(rows, 'ddkd', combo, '<th>ĐDKD</th>', 'ddkd');
-    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t14', ()=>renderTab14Body())}<button class="btn-clear" onclick="window.__t14flat(true)">📋 Xem thẳng danh sách CH (${fmt(rows.length)})</button></div>${agg}`;
+    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t14', ()=>renderTab14Body())}<button class="btn-clear" onclick="window.__t14flat(true)">📋 Xem thẳng danh sách CH (${fmt(lrows.length)})</button></div>${agg}`;
   }
   body.innerHTML = `${t14KpiRow(combo, rows)}
     ${t14FilterBar(combo)}
     ${t14ProgBar()}
-    <div class="card">${crumbHtml}${t14ChipBars(scope)}${inner}</div>
+    <div class="card">${crumbHtml}${t14ChipBars(lscope)}${inner}</div>
     ${t14NoteBox(combo)}
     ${t14Banner(combo)}`;
 }
