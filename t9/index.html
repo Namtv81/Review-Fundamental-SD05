@@ -3546,15 +3546,15 @@ function t7chartDdkdInWard(ward){
 }
 
 // ---- v57: Growth YTD / Growth CH / ASO theo phường-xã ----
-const T7_REGION_ASO = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.univer||0),0); return u>0? a/u : 0; })();
+let T7_REGION_ASO = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.univer||0),0); return u>0? a/u : 0; })();
 function t7isNeg(w){ return w && w.g_p!=null && w.g_p<0; }
 function t7asoPct(w){ return w.univer>0 ? (w.aso||0)/w.univer : null; }
 function t7asoTruocPct(w){ return w.mcp_truoc>0 ? (w.aso_truoc||0)/w.mcp_truoc : null; }
 function t7asoMoiPct(w){ return w.mcp_moi>0 ? (w.aso_moi||0)/w.mcp_moi : null; }
 function t7pctTxt(p){ return p==null ? '—' : t9pctTxt(p); }
 function t7pctCell(p){ return p==null ? '<span class="pctc gray">—</span>' : pctc(p>=0?'xanh':'do', '<b>'+t9pctTxt(p)+'</b>'); }
-const T7_REGION_ASO_TRUOC = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso_truoc||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.mcp_truoc||0),0); return u>0? a/u : 0; })();
-const T7_REGION_ASO_MOI = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso_moi||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.mcp_moi||0),0); return u>0? a/u : 0; })();
+let T7_REGION_ASO_TRUOC = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso_truoc||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.mcp_truoc||0),0); return u>0? a/u : 0; })();
+let T7_REGION_ASO_MOI = (()=>{ const a=WARDSTATS.reduce((s,w)=>s+(w.aso_moi||0),0), u=WARDSTATS.reduce((s,w)=>s+(w.mcp_moi||0),0); return u>0? a/u : 0; })();
 function t7asoColor(p, ref){ if(p==null) return 'gray'; const d=(p-(ref==null?T7_REGION_ASO:ref))*100; return d>=0?'xanh':(d>=-5?'cam':'do'); }
 function t7asoCell(p, ref){ return p==null ? '<span class="pctc gray">—</span>' : pctc(t7asoColor(p, ref), '<b>'+(p*100).toFixed(1)+'%</b>'); }
 function t7gsum(list){
@@ -3631,9 +3631,9 @@ function renderTab7(){
     <div class="card" style="margin:16px 0 0" id="t7cmpCard">
       <h3 id="t7cmpTitle">So sánh SO – ASO – Growth theo Phường/Xã</h3>
       <div class="small" id="t7cmpSum" style="margin:2px 0 10px"></div>
-      <div class="t7-controls" style="margin-bottom:8px"><button class="chip" id="t7negBtn" onclick="window.__t7negToggle()">Chỉ hiện P/X âm SO</button></div>
+      <div class="t7-controls" style="margin-bottom:8px"><button class="chip" id="t7negBtn" onclick="window.__t7negToggle()">Chỉ hiện P/X âm SO</button><span class="small" style="margin-left:12px;font-weight:600;color:var(--sub)">Nhóm CH:</span><span id="t7grpChips" style="display:contents"></span></div>
       <div class="t7-scrollbox" id="t7cmpWrap"></div>
-      <div class="t7-note"><b>Bấm vào dòng phường/xã để xổ ĐDKD; bấm tiếp vào ĐDKD để xem từng CH</b> (có bộ lọc CH giảm/ngưng, chưa ASO, trước RS/MM). Growth YTD = SO YTD năm nay so với SO YTD cùng kỳ năm trước (cùng nguồn Tab Growth YTD, đã sửa YTD LY). <b>Âm SO = Growth YTD &lt; 0</b> → tô <b style="color:#dc2626">đỏ</b> trên bản đồ. YTD LY = SO YTD cùng kỳ năm trước. ASO = số quầy có phát sinh đơn trong tháng 9 (Tab ASO active) ÷ Univer quầy. <b>Trước RS / MM (mở mới) sau RS</b> chia theo ngày tạo CH trong MCP: tạo trước thời điểm sáp nhập (Đồng Nai 01/07/2025; TP.HCM ex-BRVT 01/08/2025) là "trước RS", từ mốc đó trở đi là "mở mới sau RS"; cột ASO/%ASO trước RS và MM cho biết CH cũ hay CH mở mới đang active kém hơn; màu %ASO của 2 nhóm này so với mức chung của chính nhóm đó toàn vùng. Màu cột %ASO tổng so với mức chung toàn vùng (xanh ≥ vùng, cam thấp hơn ≤5đ%, đỏ thấp hơn &gt;5đ%).</div>
+      <div class="t7-note"><b>Bộ lọc Nhóm CH (Lẻ / VIP3 / VIP5 / VIPSI)</b> = nhóm VIP của CH (cột VIP trong MCP): lọc lại toàn bộ bảng này (P/X → ĐDKD → CH); %ASO được so với mức vùng của chính nhóm đang chọn; P/X không có CH thuộc nhóm sẽ ẩn. <b>TT SO (giảm) / TT SO (tăng)</b> = chỉ tính các CH có SO YTD thấp hơn (gồm CH ngưng) / cao hơn (gồm CH mới) cùng kỳ năm trước, kết hợp được với nhóm CH (vd VIP3 + TT SO giảm); bấm lại để bỏ lọc. Bản đồ, thẻ KPI phía trên và bảng SS/ĐDKD phía dưới vẫn tính toàn bộ CH. <b>Bấm vào dòng phường/xã để xổ ĐDKD; bấm tiếp vào ĐDKD để xem từng CH</b> (có bộ lọc CH giảm/ngưng, chưa ASO, trước RS/MM). Growth YTD = SO YTD năm nay so với SO YTD cùng kỳ năm trước (cùng nguồn Tab Growth YTD, đã sửa YTD LY). <b>Âm SO = Growth YTD &lt; 0</b> → tô <b style="color:#dc2626">đỏ</b> trên bản đồ. YTD LY = SO YTD cùng kỳ năm trước. ASO = số quầy có phát sinh đơn trong tháng 9 (Tab ASO active) ÷ Univer quầy. <b>Trước RS / MM (mở mới) sau RS</b> chia theo ngày tạo CH trong MCP: tạo trước thời điểm sáp nhập (Đồng Nai 01/07/2025; TP.HCM ex-BRVT 01/08/2025) là "trước RS", từ mốc đó trở đi là "mở mới sau RS"; cột ASO/%ASO trước RS và MM cho biết CH cũ hay CH mở mới đang active kém hơn; màu %ASO của 2 nhóm này so với mức chung của chính nhóm đó toàn vùng. Màu cột %ASO tổng so với mức chung toàn vùng (xanh ≥ vùng, cam thấp hơn ≤5đ%, đỏ thấp hơn &gt;5đ%).</div>
     </div>
     <div class="card" style="margin:16px 0 0">
       <h3>Tổng hợp theo SS — ${WARD_ALL_SS.length} team</h3>
@@ -3909,7 +3909,7 @@ window.__t7sortDdkd = function(key){
 const T7_CMP_COLS = [['ward','Phường/Xã'],['ss','SS'],['mcp_truoc','Trước RS'],['mcp_moi','MM sau RS'],['univer','Quầy'],['aso','ASO'],['aso_p','%ASO'],['aso_truoc','ASO trước RS'],['aso_truoc_p','%ASO trước RS'],['aso_moi','ASO MM'],['aso_moi_p','%ASO MM'],['g_ytd','SO YTD (tỷ)'],['g_ytd_ly','YTD LY (tỷ)'],['g_d','Chênh (tỷ)'],['g_p','Growth YTD'],['flag','Cảnh báo']];
 const T7_CMP_TIPS = {g_ytd_ly:'YTD LY = SO YTD cùng kỳ năm trước', aso_moi:'ASO MM = ASO nhóm mở mới (MM) sau RS', aso_moi_p:'%ASO MM = ASO mở mới ÷ MM sau RS', mcp_truoc:'Trước RS = Số CH trong MCP có ngày tạo TRƯỚC thời điểm sáp nhập (Đồng Nai: trước 01/07/2025; TP.HCM/ex-BRVT: trước 01/08/2025)', mcp_moi:'Số CH trong MCP có ngày tạo TỪ thời điểm sáp nhập trở đi (Đồng Nai: từ 01/07/2025; TP.HCM/ex-BRVT: từ 01/08/2025)', aso_truoc:'Số CH thuộc nhóm MCP trước RS có phát sinh đơn tháng 9', aso_truoc_p:'ASO trước RS ÷ MCP trước RS', aso_moi:'Số CH thuộc nhóm mở mới sau RS có phát sinh đơn tháng 9', aso_moi_p:'ASO mở mới ÷ Mở mới sau RS'};
 function t7cmpRows(){
-  const base = t7ss ? t7wardsForSS(t7ss) : WARDSTATS;
+  const base = (t7ss ? t7wardsForSS(t7ss) : WARDSTATS).map(t7wGrp).filter(Boolean);
   return base.map(w=>Object.assign({}, w, {
     ss_txt: w.ss.join(', '),
     aso_p: t7asoPct(w),
@@ -3971,7 +3971,7 @@ function t7chTable(g, key){
   return h + `</tbody></table></div></div>`;
 }
 function t7cmpDdRows(w){
-  const groups = (WARDCH[w.ward]||[]);
+  const groups = (WARDCH[w.ward]||[]).map(g=>!t7grpOn()?g:[g[0],g[1],g[2].filter(t7grpPass)]).filter(g=>g[2].length);
   const list = groups.map(g=>({g, a:t7ddAgg(g)})).sort((x,y)=> (x.a.out - y.a.out) || (x.a.g_d - y.a.g_d));
   let html = '';
   list.forEach(({g,a})=>{
@@ -4009,7 +4009,7 @@ window.__t7chFilter = function(v){ t7chFilter = v; renderTab7CmpTable(); };
 function t7flagHtml(f){
   return f===2 ? '<span class="t7-flag">▼ Âm SO + ASO thấp</span>' : f===1 ? '<span class="t7-flag warn">▼ Âm SO</span>' : '<span class="t7-flag ok">OK</span>';
 }
-function renderTab7CmpTable(){
+function renderTab7CmpTable0(){
   const all = t7cmpRows();
   const {key,dir} = t7sort.cmp;
   const kk = key==='ss'?'ss_txt':key;
@@ -4020,14 +4020,14 @@ function renderTab7CmpTable(){
   });
   const arrow = k => k===key ? `<span class="arrow">${dir>0?'▲':'▼'}</span>` : '';
   const g = t7gsum(all);
-  document.getElementById('t7cmpTitle').textContent = 'So sánh SO – ASO – Growth theo Phường/Xã — ' + (t7ss ? t7ss : 'toàn vùng') + ' (' + all.length + ' P/X' + (t7negOnly?', chỉ P/X âm SO':'') + ')';
+  document.getElementById('t7cmpTitle').textContent = 'So sánh SO – ASO – Growth theo Phường/Xã — ' + (t7ss ? t7ss : 'toàn vùng') + (t7grpOn() ? ' · lọc: ' + t7grpTxt() : '') + ' (' + all.length + ' P/X' + (t7negOnly?', chỉ P/X âm SO':'') + ')';
   const nneg = g.nneg;
   const thieu = all.filter(t7isNeg).reduce((s,w)=>s+((w.g_ytd_ly||0)-(w.g_ytd||0)),0);
   const kep = all.filter(w=>w.flag===2).length;
   document.getElementById('t7cmpSum').innerHTML = `<b style="color:${nneg>0?'#dc2626':'#16a34a'}">${nneg}</b>/${g.nward} phường/xã âm SO (Growth YTD &lt; 0), tổng SO YTD thấp hơn cùng kỳ <b>${fmtTy(thieu)}</b>; trong đó <b>${kep}</b> P/X vừa âm SO vừa có %ASO thấp hơn vùng &gt;3đ%. Toàn bộ nhóm đang xem: Growth YTD ${t7pctCell(g.g_p)} · Growth CH ${t7pctCell(g.ch_p)} · ASO ${t7asoCell(g.aso_p)}.`;
   const b = document.getElementById('t7negBtn'); if(b) b.classList.toggle('active', t7negOnly);
   let html = `<table class="t7-sortable t7-cmp tbl-compact"><thead><tr>${T7_CMP_COLS.map(([k,l])=>`<th onclick="window.__t7sortCmp('${k}')"${T7_CMP_TIPS[k]?` title="${T7_CMP_TIPS[k]}"`:''}>${l}${arrow(k)}</th>`).join('')}</tr></thead><tbody>`;
-  html += `<tr class="t8-total-row"><td>${t7ss? t7ss : 'TỔNG VÙNG'} (${g.nward})</td><td>—</td><td>${fmt(g.mcp_truoc)}</td><td>${fmt(g.mcp_moi)}</td><td>${fmt(g.univer)}</td><td>${fmt(g.aso)}</td><td>${t7asoCell(g.aso_p)}</td><td>${fmt(g.aso_truoc)}</td><td>${t7asoCell(g.aso_truoc_p, T7_REGION_ASO_TRUOC)}</td><td>${fmt(g.aso_moi)}</td><td>${t7asoCell(g.aso_moi_p, T7_REGION_ASO_MOI)}</td><td>${fmtTyNum(g.g_ytd)}</td><td>${fmtTyNum(g.g_ytd_ly)}</td><td>${fmtTyNum(g.g_ytd-g.g_ytd_ly)}</td><td>${t7pctCell(g.g_p)}</td><td>${g.nneg} P/X âm</td></tr>`;
+  html += `<tr class="t8-total-row"><td>${t7ss? t7ss : 'TỔNG VÙNG'}${t7grpOn() ? ' · '+t7grpTxt() : ''} (${g.nward})</td><td>—</td><td>${fmt(g.mcp_truoc)}</td><td>${fmt(g.mcp_moi)}</td><td>${fmt(g.univer)}</td><td>${fmt(g.aso)}</td><td>${t7asoCell(g.aso_p)}</td><td>${fmt(g.aso_truoc)}</td><td>${t7asoCell(g.aso_truoc_p, T7_REGION_ASO_TRUOC)}</td><td>${fmt(g.aso_moi)}</td><td>${t7asoCell(g.aso_moi_p, T7_REGION_ASO_MOI)}</td><td>${fmtTyNum(g.g_ytd)}</td><td>${fmtTyNum(g.g_ytd_ly)}</td><td>${fmtTyNum(g.g_ytd-g.g_ytd_ly)}</td><td>${t7pctCell(g.g_p)}</td><td>${g.nneg} P/X âm</td></tr>`;
   rows.forEach(w=>{
     const neg = t7isNeg(w);
     const esc = w.ward.replace(/'/g,"\\'");
@@ -4054,6 +4054,60 @@ function renderTab7CmpTable(){
   html += `</tbody></table>`;
   document.getElementById('t7cmpWrap').innerHTML = rows.length ? html : '<div class="small" style="padding:10px">Không có phường/xã nào trong phạm vi đang chọn.</div>';
 }
+// ---- T9 24/10: bộ lọc nhóm CH (Lẻ/VIP3/VIP5/VIPSI) cho bảng so sánh P/X ----
+let t7grp = 'all';
+const T7_GRP = [['all','Tất cả'],['LẺ','Lẻ'],['VIP3','VIP3'],['VIP5','VIP5'],['VIPSI','VIPSI']];
+const T7_GRP_LBL = {all:'tất cả','LẺ':'Lẻ',VIP3:'VIP3',VIP5:'VIP5',VIPSI:'VIPSI'};
+let t7tt = 'all';   // 'all' | 'giam' (SO YTD < LY, gồm ngưng) | 'tang' (SO YTD > LY, gồm mới) — TT SO của CH
+const T7_TT_LBL = {giam:'TT SO giảm', tang:'TT SO tăng'};
+function t7ttPass(r){ return t7tt==='all' || (t7tt==='giam' ? r[7]<r[8] : r[7]>r[8]); }
+function t7grpPass(r){ return (t7grp==='all' || r[3]===t7grp) && t7ttPass(r); }
+function t7grpOn(){ return t7grp!=='all' || t7tt!=='all'; }
+function t7grpTxt(){ return [t7grp!=='all'?T7_GRP_LBL[t7grp]:'', t7tt!=='all'?T7_TT_LBL[t7tt]:''].filter(Boolean).join(' + '); }
+const __t7gv = {};
+function t7wGrp(w){
+  if(!t7grpOn()) return w;
+  const key = t7grp+'|'+t7tt+'|'+w.ward; if(key in __t7gv) return __t7gv[key];
+  const rows = []; (WARDCH[w.ward]||[]).forEach(g=>g[2].forEach(r=>{ if(t7grpPass(r)) rows.push(r); }));
+  let v = null;
+  if(rows.length){
+    const s = {univer:0, mcp_truoc:0, mcp_moi:0, aso:0, aso_truoc:0, aso_moi:0, aso_off:0, aso_on:0, univer_off:0, univer_on:0, g_ytd:0, g_ytd_ly:0, ch_n:rows.length, ch_tang:0, ch_giam:0, ch_moi:0, ch_ngung:0};
+    rows.forEach(r=>{
+      s.g_ytd += r[7]; s.g_ytd_ly += r[8];
+      if(r[7]>r[8]) s.ch_tang++; else if(r[7]<r[8]) s.ch_giam++;
+      if(r[8]===0 && r[7]>0) s.ch_moi++; if(r[7]===0 && r[8]>0) s.ch_ngung++;
+      if(r[2]===2) return;
+      s.univer++; if(r[2]===0) s.univer_off++; else s.univer_on++;
+      if(r[4]){ s.mcp_moi++; if(r[5]) s.aso_moi++; } else { s.mcp_truoc++; if(r[5]) s.aso_truoc++; }
+      if(r[5]){ s.aso++; if(r[2]===0) s.aso_off++; else s.aso_on++; }
+    });
+    s.ch_ytd = s.g_ytd; s.ch_ytd_ly = s.g_ytd_ly;
+    s.g_p = s.g_ytd_ly>0 ? (s.g_ytd-s.g_ytd_ly)/s.g_ytd_ly : null; s.ch_p = s.g_p;
+    v = Object.assign({}, w, s);
+  }
+  return (__t7gv[key] = v);
+}
+function t7grpRefs(){
+  if(!t7grpOn()) return null;
+  let a=0,u=0,at=0,ut=0,am=0,um=0;
+  WARDSTATS.forEach(w=>{ const v=t7wGrp(w); if(!v) return; a+=v.aso; u+=v.univer; at+=v.aso_truoc; ut+=v.mcp_truoc; am+=v.aso_moi; um+=v.mcp_moi; });
+  return {aso:u>0?a/u:0, truoc:ut>0?at/ut:0, moi:um>0?am/um:0};
+}
+function t7grpChips(){
+  const el = document.getElementById('t7grpChips'); if(!el) return;
+  el.innerHTML = T7_GRP.map(([k,l])=>`<button class="chip${t7grp===k?' active':''}" onclick="window.__t7grp('${k}')">${l}</button>`).join('')
+    + '<span style="margin:0 4px;color:var(--sub)">|</span>'
+    + [['giam','▼ TT SO (giảm)'],['tang','▲ TT SO (tăng)']].map(([k,l])=>`<button class="chip${t7tt===k?' active':''}" title="${k==='giam'?'Chỉ tính các CH có SO YTD thấp hơn cùng kỳ (gồm CH ngưng)':'Chỉ tính các CH có SO YTD cao hơn cùng kỳ (gồm CH mới)'} — kết hợp được với nhóm CH; bấm lần nữa để bỏ lọc" onclick="window.__t7tt('${k}')">${l}</button>`).join('');
+}
+function renderTab7CmpTable(){
+  const sv = [T7_REGION_ASO, T7_REGION_ASO_TRUOC, T7_REGION_ASO_MOI];
+  const rf = t7grpRefs();
+  if(rf){ T7_REGION_ASO = rf.aso; T7_REGION_ASO_TRUOC = rf.truoc; T7_REGION_ASO_MOI = rf.moi; }
+  try { renderTab7CmpTable0(); } finally { T7_REGION_ASO = sv[0]; T7_REGION_ASO_TRUOC = sv[1]; T7_REGION_ASO_MOI = sv[2]; }
+  t7grpChips();
+}
+window.__t7grp = function(v){ t7grp = v; renderTab7CmpTable(); };
+window.__t7tt = function(v){ t7tt = (t7tt===v) ? 'all' : v; renderTab7CmpTable(); };
 window.__t7sortCmp = function(key){
   const asc = ['ward','ss','g_p','ch_p','g_d','aso_p','aso_truoc_p','aso_moi_p','ch_ptang'];
   if(t7sort.cmp.key===key) t7sort.cmp.dir *= -1; else { t7sort.cmp.key=key; t7sort.cmp.dir = asc.includes(key)?1:-1; }
