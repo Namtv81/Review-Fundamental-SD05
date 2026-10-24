@@ -3631,9 +3631,9 @@ function renderTab7(){
     <div class="card" style="margin:16px 0 0" id="t7cmpCard">
       <h3 id="t7cmpTitle">So sánh SO – ASO – Growth theo Phường/Xã</h3>
       <div class="small" id="t7cmpSum" style="margin:2px 0 10px"></div>
-      <div class="t7-controls" style="margin-bottom:8px"><button class="chip" id="t7negBtn" onclick="window.__t7negToggle()">Chỉ hiện P/X âm SO</button><span class="small" style="margin-left:12px;font-weight:600;color:var(--sub)">Nhóm CH:</span><span id="t7grpChips" style="display:contents"></span></div>
+      <div class="t7-controls" style="margin-bottom:8px"><button class="chip" id="t7negBtn" onclick="window.__t7negToggle()">Chỉ hiện P/X âm SO</button><span class="small" style="margin-left:12px;font-weight:600;color:var(--sub)">Nhóm CH:</span><span id="t7grpChips" style="display:contents"></span><span style="margin:0 4px 0 10px;color:var(--sub)">|</span><span class="small" style="font-weight:600;color:var(--sub)">Phường/Xã:</span> <input id="t7wardIn" list="t7wardList" autocomplete="off" placeholder="Chọn hoặc gõ tên P/X…" style="margin-left:4px;padding:7px 12px;border:1px solid var(--line,#cbd5e1);border-radius:999px;font-size:13px;min-width:210px" oninput="window.__t7wardIn(event)" onchange="window.__t7wardIn(event,true)"><datalist id="t7wardList"></datalist><span id="t7wardTags" style="display:contents"></span></div>
       <div class="t7-scrollbox" id="t7cmpWrap"></div>
-      <div class="t7-note"><b>Bộ lọc Nhóm CH (Lẻ / VIP3 / VIP5 / VIPSI)</b> = nhóm VIP của CH (cột VIP trong MCP): lọc lại toàn bộ bảng này (P/X → ĐDKD → CH); %ASO được so với mức vùng của chính nhóm đang chọn; P/X không có CH thuộc nhóm sẽ ẩn. <b>TT SO (giảm) / TT SO (tăng)</b> = chỉ tính các CH có SO YTD thấp hơn (gồm CH ngưng) / cao hơn (gồm CH mới) cùng kỳ năm trước, kết hợp được với nhóm CH (vd VIP3 + TT SO giảm); bấm lại để bỏ lọc. Bản đồ, thẻ KPI phía trên và bảng SS/ĐDKD phía dưới vẫn tính toàn bộ CH. <b>Bấm vào dòng phường/xã để xổ ĐDKD; bấm tiếp vào ĐDKD để xem từng CH</b> (có bộ lọc CH giảm/ngưng, chưa ASO, trước RS/MM). Growth YTD = SO YTD năm nay so với SO YTD cùng kỳ năm trước (cùng nguồn Tab Growth YTD, đã sửa YTD LY). <b>Âm SO = Growth YTD &lt; 0</b> → tô <b style="color:#dc2626">đỏ</b> trên bản đồ. YTD LY = SO YTD cùng kỳ năm trước. ASO = số quầy có phát sinh đơn trong tháng 9 (Tab ASO active) ÷ Univer quầy. <b>Trước RS / MM (mở mới) sau RS</b> chia theo ngày tạo CH trong MCP: tạo trước thời điểm sáp nhập (Đồng Nai 01/07/2025; TP.HCM ex-BRVT 01/08/2025) là "trước RS", từ mốc đó trở đi là "mở mới sau RS"; cột ASO/%ASO trước RS và MM cho biết CH cũ hay CH mở mới đang active kém hơn; màu %ASO của 2 nhóm này so với mức chung của chính nhóm đó toàn vùng. Màu cột %ASO tổng so với mức chung toàn vùng (xanh ≥ vùng, cam thấp hơn ≤5đ%, đỏ thấp hơn &gt;5đ%).</div>
+      <div class="t7-note"><b>Bộ lọc Nhóm CH (Lẻ / VIP3 / VIP5 / VIPSI)</b> = nhóm VIP của CH (cột VIP trong MCP): lọc lại toàn bộ bảng này (P/X → ĐDKD → CH); %ASO được so với mức vùng của chính nhóm đang chọn; P/X không có CH thuộc nhóm sẽ ẩn. <b>TT SO (giảm) / TT SO (tăng)</b> = chỉ tính các CH có SO YTD thấp hơn (gồm CH ngưng) / cao hơn (gồm CH mới) cùng kỳ năm trước, kết hợp được với nhóm CH (vd VIP3 + TT SO giảm); bấm lại để bỏ lọc. Bản đồ, thẻ KPI phía trên và bảng SS/ĐDKD phía dưới vẫn tính toàn bộ CH. <b>Bộ lọc Phường/Xã</b>: chọn (hoặc gõ) tên P/X để chỉ hiện P/X đó trong bảng, tự xổ sẵn ĐDKD; chọn được nhiều P/X, bấm ✕ để bỏ từng P/X hoặc “Bỏ chọn hết”; kết hợp được với Nhóm CH và TT SO. <b>Bấm vào dòng phường/xã để xổ ĐDKD; bấm tiếp vào ĐDKD để xem từng CH</b> (có bộ lọc CH giảm/ngưng, chưa ASO, trước RS/MM). Growth YTD = SO YTD năm nay so với SO YTD cùng kỳ năm trước (cùng nguồn Tab Growth YTD, đã sửa YTD LY). <b>Âm SO = Growth YTD &lt; 0</b> → tô <b style="color:#dc2626">đỏ</b> trên bản đồ. YTD LY = SO YTD cùng kỳ năm trước. ASO = số quầy có phát sinh đơn trong tháng 9 (Tab ASO active) ÷ Univer quầy. <b>Trước RS / MM (mở mới) sau RS</b> chia theo ngày tạo CH trong MCP: tạo trước thời điểm sáp nhập (Đồng Nai 01/07/2025; TP.HCM ex-BRVT 01/08/2025) là "trước RS", từ mốc đó trở đi là "mở mới sau RS"; cột ASO/%ASO trước RS và MM cho biết CH cũ hay CH mở mới đang active kém hơn; màu %ASO của 2 nhóm này so với mức chung của chính nhóm đó toàn vùng. Màu cột %ASO tổng so với mức chung toàn vùng (xanh ≥ vùng, cam thấp hơn ≤5đ%, đỏ thấp hơn &gt;5đ%).</div>
     </div>
     <div class="card" style="margin:16px 0 0">
       <h3>Tổng hợp theo SS — ${WARD_ALL_SS.length} team</h3>
@@ -3918,7 +3918,7 @@ function t7cmpRows(){
     g_d: (w.g_ytd||0)-(w.g_ytd_ly||0),
     ch_ptang: (w.ch_tang+w.ch_giam)>0 ? w.ch_tang/(w.ch_tang+w.ch_giam) : null,
     flag: t7isNeg(w) ? ((t7asoPct(w)!=null && (t7asoPct(w)-T7_REGION_ASO)*100<-3) ? 2 : 1) : 0
-  })).filter(w=> !t7negOnly || t7isNeg(w));
+  })).filter(w=> !t7negOnly || t7isNeg(w)).filter(w=> !t7wsel.size || t7wsel.has(w.ward));
 }
 
 // ---- v62: khoan sâu bảng so sánh: Phường/Xã -> ĐDKD -> CH ----
@@ -4020,14 +4020,14 @@ function renderTab7CmpTable0(){
   });
   const arrow = k => k===key ? `<span class="arrow">${dir>0?'▲':'▼'}</span>` : '';
   const g = t7gsum(all);
-  document.getElementById('t7cmpTitle').textContent = 'So sánh SO – ASO – Growth theo Phường/Xã — ' + (t7ss ? t7ss : 'toàn vùng') + (t7grpOn() ? ' · lọc: ' + t7grpTxt() : '') + ' (' + all.length + ' P/X' + (t7negOnly?', chỉ P/X âm SO':'') + ')';
+  document.getElementById('t7cmpTitle').textContent = 'So sánh SO – ASO – Growth theo Phường/Xã — ' + (t7ss ? t7ss : 'toàn vùng') + (t7grpOn() ? ' · lọc: ' + t7grpTxt() : '') + (t7wsel.size ? ' · đã chọn ' + t7wsel.size + ' P/X' : '') + ' (' + all.length + ' P/X' + (t7negOnly?', chỉ P/X âm SO':'') + ')';
   const nneg = g.nneg;
   const thieu = all.filter(t7isNeg).reduce((s,w)=>s+((w.g_ytd_ly||0)-(w.g_ytd||0)),0);
   const kep = all.filter(w=>w.flag===2).length;
   document.getElementById('t7cmpSum').innerHTML = `<b style="color:${nneg>0?'#dc2626':'#16a34a'}">${nneg}</b>/${g.nward} phường/xã âm SO (Growth YTD &lt; 0), tổng SO YTD thấp hơn cùng kỳ <b>${fmtTy(thieu)}</b>; trong đó <b>${kep}</b> P/X vừa âm SO vừa có %ASO thấp hơn vùng &gt;3đ%. Toàn bộ nhóm đang xem: Growth YTD ${t7pctCell(g.g_p)} · Growth CH ${t7pctCell(g.ch_p)} · ASO ${t7asoCell(g.aso_p)}.`;
   const b = document.getElementById('t7negBtn'); if(b) b.classList.toggle('active', t7negOnly);
   let html = `<table class="t7-sortable t7-cmp tbl-compact"><thead><tr>${T7_CMP_COLS.map(([k,l])=>`<th onclick="window.__t7sortCmp('${k}')"${T7_CMP_TIPS[k]?` title="${T7_CMP_TIPS[k]}"`:''}>${l}${arrow(k)}</th>`).join('')}</tr></thead><tbody>`;
-  html += `<tr class="t8-total-row"><td>${t7ss? t7ss : 'TỔNG VÙNG'}${t7grpOn() ? ' · '+t7grpTxt() : ''} (${g.nward})</td><td>—</td><td>${fmt(g.mcp_truoc)}</td><td>${fmt(g.mcp_moi)}</td><td>${fmt(g.univer)}</td><td>${fmt(g.aso)}</td><td>${t7asoCell(g.aso_p)}</td><td>${fmt(g.aso_truoc)}</td><td>${t7asoCell(g.aso_truoc_p, T7_REGION_ASO_TRUOC)}</td><td>${fmt(g.aso_moi)}</td><td>${t7asoCell(g.aso_moi_p, T7_REGION_ASO_MOI)}</td><td>${fmtTyNum(g.g_ytd)}</td><td>${fmtTyNum(g.g_ytd_ly)}</td><td>${fmtTyNum(g.g_ytd-g.g_ytd_ly)}</td><td>${t7pctCell(g.g_p)}</td><td>${g.nneg} P/X âm</td></tr>`;
+  html += `<tr class="t8-total-row"><td>${t7wsel.size ? 'TỔNG ' + t7wsel.size + ' P/X ĐÃ CHỌN' : t7ss? t7ss : 'TỔNG VÙNG'}${t7grpOn() ? ' · '+t7grpTxt() : ''} (${g.nward})</td><td>—</td><td>${fmt(g.mcp_truoc)}</td><td>${fmt(g.mcp_moi)}</td><td>${fmt(g.univer)}</td><td>${fmt(g.aso)}</td><td>${t7asoCell(g.aso_p)}</td><td>${fmt(g.aso_truoc)}</td><td>${t7asoCell(g.aso_truoc_p, T7_REGION_ASO_TRUOC)}</td><td>${fmt(g.aso_moi)}</td><td>${t7asoCell(g.aso_moi_p, T7_REGION_ASO_MOI)}</td><td>${fmtTyNum(g.g_ytd)}</td><td>${fmtTyNum(g.g_ytd_ly)}</td><td>${fmtTyNum(g.g_ytd-g.g_ytd_ly)}</td><td>${t7pctCell(g.g_p)}</td><td>${g.nneg} P/X âm</td></tr>`;
   rows.forEach(w=>{
     const neg = t7isNeg(w);
     const esc = w.ward.replace(/'/g,"\\'");
@@ -4104,8 +4104,35 @@ function renderTab7CmpTable(){
   const rf = t7grpRefs();
   if(rf){ T7_REGION_ASO = rf.aso; T7_REGION_ASO_TRUOC = rf.truoc; T7_REGION_ASO_MOI = rf.moi; }
   try { renderTab7CmpTable0(); } finally { T7_REGION_ASO = sv[0]; T7_REGION_ASO_TRUOC = sv[1]; T7_REGION_ASO_MOI = sv[2]; }
-  t7grpChips();
+  t7grpChips(); t7wardUI();
 }
+// ---- T9 24/10: bộ lọc chọn Phường/Xã ----
+let t7wsel = new Set();
+function t7wardUI(){
+  const dl = document.getElementById('t7wardList');
+  if(dl){
+    const list = (t7ss ? t7wardsForSS(t7ss) : WARDSTATS).map(w=>w.ward).filter(w=>!t7wsel.has(w)).sort((a,b)=>a.localeCompare(b,'vi'));
+    const sig = (t7ss||'')+'|'+list.length+'|'+t7wsel.size;
+    if(dl.dataset.sig!==sig){ dl.dataset.sig = sig; dl.innerHTML = list.map(w=>`<option value="${w.replace(/"/g,'&quot;')}"></option>`).join(''); }
+  }
+  const el = document.getElementById('t7wardTags'); if(!el) return;
+  el.innerHTML = Array.from(t7wsel).map(w=>`<button class="chip active" style="margin-left:6px" title="Bấm để bỏ P/X này" onclick="window.__t7wardDel(this.dataset.w)" data-w="${w.replace(/"/g,'&quot;')}">${w} ✕</button>`).join('')
+    + (t7wsel.size ? `<button class="chip" style="margin-left:6px" onclick="window.__t7wardClear()">Bỏ chọn hết</button>` : '');
+}
+window.__t7wardAdd = function(w){
+  if(!t7wsel.has(w)){ t7wsel.add(w); t7cmpOpen.add(w); }
+  const inp = document.getElementById('t7wardIn'); if(inp) inp.value = '';
+  renderTab7CmpTable();
+};
+window.__t7wardIn = function(e, isChange){
+  const inp = e.target, v = (inp.value||'').trim(); if(!v) return;
+  if(!isChange && e.inputType && e.inputType!=='insertReplacementText') return;   // đang gõ: chưa chọn
+  const all = WARDSTATS.map(w=>w.ward);
+  const m = all.find(w=>w===v) || all.find(w=>w.toLowerCase()===v.toLowerCase());
+  if(m) window.__t7wardAdd(m);
+};
+window.__t7wardDel = function(w){ t7wsel.delete(w); t7cmpOpen.delete(w); renderTab7CmpTable(); };
+window.__t7wardClear = function(){ t7wsel.forEach(w=>t7cmpOpen.delete(w)); t7wsel.clear(); renderTab7CmpTable(); };
 window.__t7grp = function(v){ t7grp = v; renderTab7CmpTable(); };
 window.__t7tt = function(v){ t7tt = (t7tt===v) ? 'all' : v; renderTab7CmpTable(); };
 window.__t7sortCmp = function(key){
