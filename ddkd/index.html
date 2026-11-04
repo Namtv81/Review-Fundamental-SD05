@@ -927,7 +927,7 @@ let t1state = Object.assign({prog:'giavi'}, T1_FRESH());
 function t1Meta(prog){ return T1_PROGS_GROWTH.includes(prog) ? DATA.tab1[prog] : DATA.tab1_kpiobj[prog]; }
 function t1RowsOfProg(prog){ return (T1_PROGS_GROWTH.includes(prog) ? TAB1ROWS : TAB1_KPIOBJ_ROWS).filter(r=>r.prog===prog); }
 function t1IsGift(prog){ return false; }
-function t1BaselineLabel(prog){ return t1IsMbs(prog) ? 'Chỉ tiêu nền' : prog==='mi' ? 'Nền T6-7-8' : (T1_PROGS_GROWTH.includes(prog) ? 'Nền T7-8-9' : (t1IsTdc(prog) ? 'Mốc (thùng)' : 'Mốc cố định')); }
+function t1BaselineLabel(prog){ return t1IsMbs(prog) ? 'Chỉ tiêu nền' : prog==='mi' ? 'Nền T6-7-8' : (T1_PROGS_GROWTH.includes(prog) ? 'Nền T7-8-9' : (t1IsTdc(prog) ? 'CT (mốc thùng)' : 'CT (mốc cố định)')); }
 function t1BaselineVal(r){ return r.rr!=null ? r.rr : r.moc; }
 // trạng thái chi tiết: dat / chay (đã phát sinh DS nhưng chưa đạt) / chua (chưa phát sinh)
 function t1St(r){ return r.dat_gate ? 'dat' : (r.mtd>0 ? 'chay' : 'chua'); }
@@ -1109,12 +1109,13 @@ function t1ChTable(rows, prog){
       <td class="small c-dd" style="line-height:1.25">${r.ddkd||'—'}${hideSS?'':'<br><span style="color:#9ca3af;font-size:10.5px">'+(r.ss||'')+'</span>'}</td><td class="c-ten" style="line-height:1.25">${r.ten||'—'}<br><span style="color:#9ca3af;font-size:10.5px">${r.ma} · ${vt}</span></td><td style="white-space:nowrap;font-size:12px">${mc}</td><td>${tr2(r.mtd)}</td><td>${pctTxt}</td><td>${vc>0?'<span style="color:#dc2626;font-weight:700">'+tr2(vc)+'</span>':'—'}</td><td>${tr2(dstt)}</td><td style="padding:3px 6px"><div style="font-weight:800;margin-bottom:1px;white-space:nowrap">${n4txt}${r.nv2?' <span style="color:#16a34a">✔ đủ NV2</span>':''}</div><div style="display:grid;grid-template-columns:auto auto;gap:1px 10px;font-size:11px;white-space:nowrap;text-align:left">${cb(0)}${cb(1)}${cb(2)}${cb(3)}</div></td><td style="white-space:nowrap;line-height:1.25">${dot(T1_ST_COLOR[st])}${stLbl[st]}${r.muc>0?'<br><b style="font-size:11px">'+mucTxt+'</b>':''}</td><td>${fmtVnd(r.thuong)}</td></tr>`;
     }).join('') || empty;
   } else {
-    head = `${chLeadTh(hideSS)}<th>${baseLabel}</th><th>${t1IsTdc(prog)?'MTD T11 (thùng)':'MTD T11'}</th><th>%TH</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${prog==='bev'?'<th>ĐK Dnl đồng hồ Tea365</th>':''}`;
+    const gm = (t1Meta(prog).kind==='growth') ? (t1Meta(prog).gate_mult||1) : 0;
+    head = `${chLeadTh(hideSS)}<th>${baseLabel}</th>${gm?`<th title="Chỉ tiêu = nền × ${Math.round(gm*100)}% (MTD đạt mức này mới đủ điều kiện thưởng)">CT nền ${Math.round(gm*100)}%</th>`:''}<th>${t1IsTdc(prog)?'MTD T11 (thùng)':'MTD T11'}</th><th${gm?' title="MTD so với nền gốc"':''}>${gm?'%TH nền':'%TH'}</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${prog==='bev'?'<th>ĐK Dnl đồng hồ Tea365</th>':''}`;
     body = capped.map(r=>{
       const base = t1BaselineVal(r), st = t1St(r);
       const pctTxt = r.pct!=null ? (r.pct*100).toFixed(1)+'%' : '—';
       return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],[baseLabel,F(base)],['MTD T11',F(r.mtd)],['%TH',pctTxt],['Trạng thái', stLbl[st], T1_ST_COLOR[st]],['Thưởng (tham khảo)',fmtVnd(r.thuong)]].concat(prog==='bev'?[['ĐK Dnl đồng hồ Tea365',r.dnl_da?'Đã đăng ký':'—',r.dnl_da?'xanh':'']]:[])))}>
-      ${chLeadTd(hideSS, r)}<td>${F(base)}</td><td>${F(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${prog==='bev'?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
+      ${chLeadTd(hideSS, r)}<td>${F(base)}</td>${gm?`<td style="font-weight:700;color:#1d4ed8">${F(Math.round(base*gm))}</td>`:''}<td>${F(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${prog==='bev'?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
     }).join('') || empty.replace('colspan="11"','colspan="10"');
   }
   return `${t1IsMbs(prog)?'<style>table[data-mbs] td.c-ten{white-space:normal;min-width:90px;max-width:130px;line-height:1.25;font-size:12px}</style>':''}<div class="tbl-scroll" style="max-height:65vh"><table${t1IsMbs(prog)?' class="tbl-compact" data-mbs="1"':chTblAttr(hideSS)}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
