@@ -1131,24 +1131,25 @@ function t1KpiDefs(prog){
   return d;
 }
 function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
-  const gift = t1IsGift(prog);
+  const gift = t1IsGift(prog), MBSA = t1IsMbs(prog);
+  const NVT = prog==='mbs_ds' ? 'NV2: mua đủ 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté), mỗi nhãn ≥150k' : 'NV2: có ≥500k từ 4 nhãn trọng điểm';
   if(key==='ss' && topfOn('t1')){
     const lastThF = gift ? 'Quà (chai Nhị Ca)' : 'Thưởng ước tính', midThF = gift ? 'Đã mua Nhất Ca' : 'Đã phát sinh DS', bev = prog==='bev';
     const defs = t1KpiDefs(prog), sel = topfKpiSel('t1', defs);
-    const TH = ['Tổng quầy', midThF, '%'+(gift?'đã mua':'phát sinh'), 'Số đạt', '%đạt', lastThF, gift?'%quầy có quà':'Thưởng BQ/quầy', 'ĐK Dnl đồng hồ Tea365', '%ĐK Dnl'];
-    const dflt = bev ? [0,1,3,4,5,7] : [0,1,3,4,5];
+    const TH = ['Tổng quầy', midThF, '%'+(gift?'đã mua':'phát sinh'), 'Số đạt', '%đạt', lastThF, gift?'%quầy có quà':'Thưởng BQ/quầy', 'ĐK Dnl đồng hồ Tea365', '%ĐK Dnl', 'Số CH đạt NV1', 'Số CH đạt NV2', 'Số CH đạt cả 2 NV'];
+    const dflt = bev ? [0,1,3,4,5,7] : (MBSA ? [0,1,3,4,5,9,10,11] : [0,1,3,4,5]);
     const dm = {};
-    rows.forEach(r=>{ if(!r.ddkd) return; const e=(dm[r.ss+'|'+r.ddkd]=dm[r.ss+'|'+r.ddkd]||{label:r.ddkd, ss:r.ss, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
+    rows.forEach(r=>{ if(!r.ddkd) return; const e=(dm[r.ss+'|'+r.ddkd]=dm[r.ss+'|'+r.ddkd]||{label:r.ddkd, ss:r.ss, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; if(MBSA){ if(r.muc>0) e.nv1=(e.nv1||0)+1; if(r.nv2) e.nv2=(e.nv2||0)+1; if(r.muc>0 && r.nv2) e.nv12=(e.nv12||0)+1; } e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
     const pt = (a,b)=> b>0 ? (100*a/b).toFixed(1)+'%' : '0%';
     const valF = sel ? sel.val : (it=>it.total>0 ? 100*it.dat/it.total + it.dat*1e-6 : null);
     const fr = topfRowsHtml('t1', Object.values(dm), valF, it=>it.total>=5, it=>{
       const esc = x=>String(x).replace(/'/g,"\\'");
-      const cells = [fmt(it.total), fmt(it.chay), pt(it.chay,it.total), fmt(it.dat), pt(it.dat,it.total), gift ? fmt(it.qua) : fmtVnd(it.thuong), gift ? pt(it.qua,it.total) : fmtVnd(it.total>0 ? Math.round(it.thuong/it.total) : 0), it.dnl?fmt(it.dnl):'—', pt(it.dnl,it.total)].map(x=>'<td>'+x+'</td>');
+      const cells = [fmt(it.total), fmt(it.chay), pt(it.chay,it.total), fmt(it.dat), pt(it.dat,it.total), gift ? fmt(it.qua) : fmtVnd(it.thuong), gift ? pt(it.qua,it.total) : fmtVnd(it.total>0 ? Math.round(it.thuong/it.total) : 0), it.dnl?fmt(it.dnl):'—', pt(it.dnl,it.total), fmt(it.nv1||0), fmt(it.nv2||0), fmt(it.nv12||0)].map(x=>'<td>'+x+'</td>');
       return `<tr class="rowclick" onclick="window.__t1set('ss','${esc(it.ss)}');window.__t1set('ddkd','${esc(it.label)}')">${topfIdTd(it.ss, it.label)}${topfArrSel(cells, sel, dflt)}</tr>`; }, 4+(sel?sel.cols:dflt).length);
     return `<div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${firstTh}${topfThSel(TH.map(x=>'<th>'+x+'</th>'), sel, dflt)}</tr></thead><tbody>${fr.html}</tbody></table></div>${topfNote('t1', fr.n, sel ? sel.metric : '%đạt (số quầy đạt ÷ tổng quầy)', 'chỉ xếp ĐDKD có ≥5 quầy')}`;
   }
   const map = {};
-  rows.forEach(r=>{ const k=r[key]||'(Chưa xác định)'; const e=(map[k]=map[k]||{label:k, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
+  rows.forEach(r=>{ const k=r[key]||'(Chưa xác định)'; const e=(map[k]=map[k]||{label:k, total:0, chay:0, dat:0, thuong:0, qua:0, dnl:0}); if(r.dnl_da) e.dnl++; if(MBSA){ if(r.muc>0) e.nv1=(e.nv1||0)+1; if(r.nv2) e.nv2=(e.nv2||0)+1; if(r.muc>0 && r.nv2) e.nv12=(e.nv12||0)+1; } e.total++; if(r.dat_gate) e.dat++; if(r.mtd>0) e.chay++; e.thuong+=r.thuong||0; e.qua+=r.qua||0; });
   let items = Object.values(map);
   if(key==='ss'){
     const known = items.filter(it=>SS_ROSTER[it.label]), unknown = items.filter(it=>!SS_ROSTER[it.label]);
@@ -1161,16 +1162,16 @@ function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
     const last = gift ? fmt(it.qua) : fmtVnd(it.thuong);
     const idTd = (key==='ss' && SS_ROSTER[it.label]) ? ssIdTd(it.label) : (key==='ss' ? `<td colspan="3" class="small">${it.label}</td><td>—</td>` : `<td>${it.label}</td>`);
     const tip = key==='ss' ? tipAttr(gtip(it.label,'Sales Supervisor',[['Tổng quầy',fmt(it.total)],[midTh,fmt(it.chay)],['Số đạt',fmt(it.dat)],['%đạt',pct+'%'],[lastTh,last]])) : '';
-    return `<tr class="rowclick" onclick="window.__t1set('${clickKey}','${String(it.label).replace(/'/g,"\\'")}')"${tip}>${idTd}<td>${fmt(it.total)}</td><td>${fmt(it.chay)}</td><td>${fmt(it.dat)}</td><td>${pct}%</td><td>${last}</td>${prog==='bev'?`<td>${it.dnl?fmt(it.dnl):'—'}</td>`:''}</tr>`;
+    return `<tr class="rowclick" onclick="window.__t1set('${clickKey}','${String(it.label).replace(/'/g,"\\'")}')"${tip}>${idTd}<td>${fmt(it.total)}</td><td>${fmt(it.chay)}</td><td>${fmt(it.dat)}</td><td>${pct}%</td><td>${last}</td>${prog==='bev'?`<td>${it.dnl?fmt(it.dnl):'—'}</td>`:''}${MBSA?`<td>${fmt(it.nv1||0)}</td><td>${fmt(it.nv2||0)}</td><td style="font-weight:700">${fmt(it.nv12||0)}</td>`:''}</tr>`;
   }).join('') || `<tr><td colspan="8" style="text-align:center;padding:20px;color:#888">Không có dữ liệu.</td></tr>`;
   const t1TotRow = (()=>{
     if(!items.length) return '';
-    const T = items.reduce((a,it)=>({total:a.total+it.total, chay:a.chay+it.chay, dat:a.dat+it.dat, thuong:a.thuong+it.thuong, qua:a.qua+it.qua, dnl:a.dnl+it.dnl}), {total:0,chay:0,dat:0,thuong:0,qua:0,dnl:0});
+    const T = items.reduce((a,it)=>({total:a.total+it.total, chay:a.chay+it.chay, dat:a.dat+it.dat, thuong:a.thuong+it.thuong, qua:a.qua+it.qua, dnl:a.dnl+it.dnl, nv1:a.nv1+(it.nv1||0), nv2:a.nv2+(it.nv2||0), nv12:a.nv12+(it.nv12||0)}), {total:0,chay:0,dat:0,thuong:0,qua:0,dnl:0,nv1:0,nv2:0,nv12:0});
     const pctT = T.total>0 ? (100*T.dat/T.total).toFixed(1) : 0;
     const lead = key==='ss' ? ssIdTotalTd(scTotV(), SSID_TOTAL_DDKD) : '<td>TỔNG</td>';
-    return `<tr class="t8-total-row">${lead}<td>${fmt(T.total)}</td><td>${fmt(T.chay)}</td><td>${fmt(T.dat)}</td><td>${pctT}%</td><td>${gift ? fmt(T.qua) : fmtVnd(T.thuong)}</td>${prog==='bev'?`<td>${T.dnl?fmt(T.dnl):'—'}</td>`:''}</tr>`;
+    return `<tr class="t8-total-row">${lead}<td>${fmt(T.total)}</td><td>${fmt(T.chay)}</td><td>${fmt(T.dat)}</td><td>${pctT}%</td><td>${gift ? fmt(T.qua) : fmtVnd(T.thuong)}</td>${prog==='bev'?`<td>${T.dnl?fmt(T.dnl):'—'}</td>`:''}${MBSA?`<td>${fmt(T.nv1)}</td><td>${fmt(T.nv2)}</td><td>${fmt(T.nv12)}</td>`:''}</tr>`;
   })();
-  return `<div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${firstTh}<th>Tổng quầy</th><th>${midTh}</th><th>Số đạt</th><th>%đạt</th><th>${lastTh}</th>${prog==='bev'?'<th>ĐK Dnl đồng hồ Tea365</th>':''}</tr></thead><tbody>${rowsHtml}${t1TotRow}</tbody></table></div>`;
+  return `<div class="tbl-scroll"><table class="tbl-compact"><thead><tr>${firstTh}<th>Tổng quầy</th><th>${midTh}</th><th>Số đạt</th><th>%đạt</th><th>${lastTh}</th>${prog==='bev'?'<th>ĐK Dnl đồng hồ Tea365</th>':''}${MBSA?`<th title="NV1: MTD tổng ≥ Mức 1 (95% chỉ tiêu nền)">Số CH đạt NV1</th><th title="${NVT}">Số CH đạt NV2</th><th title="Đạt đồng thời NV1 và NV2">Số CH đạt cả 2 NV</th>`:''}</tr></thead><tbody>${rowsHtml}${t1TotRow}</tbody></table></div>`;
 }
 function t1FilterBar(prog){
   const f = t1state;
@@ -2489,6 +2490,7 @@ function t5rowsFiltered(){
 function renderTab5(){
   const p = document.getElementById('panel-t5');
   p.innerHTML = `
+    <style>#t5body .chip{padding:4px 11px;font-size:12.5px}#t5body .chips{gap:6px}</style>
     <div class="kpi-row" id="t5kpis"></div>
     <div class="card">
       <div class="chips">
@@ -2504,10 +2506,10 @@ function renderTab5(){
         <div class="filter-field" style="min-width:220px"><label>Tìm quầy theo mã hoặc tên</label><input id="storeSearchT5" placeholder="VD: 2524446 hoặc tên quầy..."></div>
         <button class="btn-clear" style="background:var(--chàm-1);color:#fff;border-color:var(--chàm-1)" onclick="window.__doSearch('storeSearchT5')">Tìm chi tiết 360°</button>
       </div>
-      <div class="small" style="margin-bottom:6px">Từ Tháng 11 cuộc thi ảnh chạy theo cơ chế <b>Nhiệm vụ ngày</b> (CV 464–470): mỗi ngày khách hàng hoàn thành tối đa 1 lần, tối đa 30 lần/tháng, thưởng theo từng lần (NGK 2.000đ · Cà phê 4.000đ · HPC 4.000đ · Meat 6.000đ · KH trọng điểm 2.000đ · Gia vị 4.000đ/12.000đ · Mì 4.000đ/12.000đ tùy mức kệ). Hoàn thành ≥1 lần = có ≥1 ảnh duyệt · Đã chụp = có ảnh nhưng chưa được duyệt · Chưa chụp = chưa có ảnh. <b>Số lần hoàn thành chỉ tính ảnh do RTL tự chụp (bỏ ảnh ĐDKD chụp), mỗi ngày tối đa 1 lần</b>. Đã loại các chương trình sampling. Chương trình TBTN Tủ mát Nước giải khát chỉ do ĐDKD chụp nên <b>vẫn Tracking bộ hình ĐDKD chụp nhưng không tính vào tổng suất Tbay / Hoàn thành ≥1 lần / Đã chụp / Chưa chụp</b>.</div>
       <div class="breadcrumb" id="t5crumb"></div>
       <div id="t5body"></div>
     </div>
+    <div class="small" style="margin-top:12px;margin-bottom:6px">Từ Tháng 11 cuộc thi ảnh chạy theo cơ chế <b>Nhiệm vụ ngày</b> (CV 464–470): mỗi ngày khách hàng hoàn thành tối đa 1 lần, tối đa 30 lần/tháng, thưởng theo từng lần (NGK 2.000đ · Cà phê 4.000đ · HPC 4.000đ · Meat 6.000đ · KH trọng điểm 2.000đ · Gia vị 4.000đ/12.000đ · Mì 4.000đ/12.000đ tùy mức kệ). Hoàn thành ≥1 lần = có ≥1 ảnh duyệt · Đã chụp = có ảnh nhưng chưa được duyệt · Chưa chụp = chưa có ảnh. <b>Số lần hoàn thành chỉ tính ảnh do RTL tự chụp (bỏ ảnh ĐDKD chụp), mỗi ngày tối đa 1 lần</b>. Đã loại các chương trình sampling. Chương trình TBTN Tủ mát Nước giải khát chỉ do ĐDKD chụp nên <b>vẫn Tracking bộ hình ĐDKD chụp nhưng không tính vào tổng suất Tbay / Hoàn thành ≥1 lần / Đã chụp / Chưa chụp</b>.</div>
     <div class="t8f-recov-banner" style="margin-top:12px;background:#fef9c3;border-color:#facc15">✅ Số bộ ảnh chụp/duyệt theo danh sách Trưng bày <b>Tháng 11</b> (9 chương trình, 6.444 suất: 4.937 suất chụp hình + chương trình TBTN Tủ mát Nước giải khát 1.507 suất chỉ ĐDKD chụp nên chỉ Tracking bộ hình ĐDKD) và cột banker/MTD/%TH/thưởng ước tính đã cập nhật đến <b>04/11/2026</b>. Điều kiện "Dnl doanh số" T11 (CV 454–463, 474): suất có trong file "DSKH import Dnl Tbay Tháng 11" (4.584 dòng / 1.685 CH), tích lũy doanh số 01–30/11, mỗi KH tối đa 1 suất — banker/thưởng: Mì 1,5tr/100k · Mì Onelook 2tr/120k · Gia vị 2tr/100k · Cà phê 1,5tr/100k · HMP (Chanté + Joins) 850k/150k · NGK (Tea365) 300k/45k · Meat 1,5tr/150k · KH trọng điểm (Gia vị) 500k/30k. Khớp 4.062 suất / 1.412 CH với DSKH Tbay chụp hình T11; 370 suất có trong import nhưng chưa có suất Tbay chụp hình. 3 chương trình Đại sứ Tết Masan (152 dòng trong file import) hiện chưa theo dõi trên Dashboard. Cuộc thi ảnh T11 tính theo Nhiệm vụ ngày (CV 464–470).</div>
     <div class="t8f-recov-banner" style="margin-top:10px;background:#f3efff;border-color:#c4b5fd;color:#4c1d95"><div style="cursor:pointer;font-weight:600;user-select:none" onclick="window.__toggleNote('note_t5dnl')"><span id="note_t5dnl_arrow">▸</span> 🏆 <b>Suất đủ điều kiện tham gia Dnl doanh số</b> — bấm để xem chi tiết &amp; đối chiếu file Trade</div><div id="note_t5dnl" style="display:none;margin-top:6px"><div class="small" id="t5dnlInfo"></div></div></div>
   `;
@@ -2597,14 +2599,13 @@ function renderTab5Body(){
     const aDdChip = (val,label)=>{ const cnt = val==='chup' ? rows.filter(r=>(r.dd_chup||0)>0).length : rows.filter(r=>(r.dd_chup||0)===0).length; return `<button class="chip${t5ddFilter===val?' active':''}" onclick="window.__t5ddFilter(${t5ddFilter===val?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`; };
     const aggFilterHtml = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 6px">
       <span class="small" style="color:var(--sub);font-weight:600">${rowsAllTm?'Lọc suất Tủ mát:':'Lọc suất Tbay:'}</span>
-      ${rowsAllTm?`<div class="chips" style="margin:0">${aStChip(null,'Tất cả')}${aStChip('tm_dat',T5_STLABEL.tm_dat)}${aStChip('tm_p',T5_STLABEL.tm_p)}${aStChip('tm_0',T5_STLABEL.tm_0)}</div><span class="small" style="color:#475569"><b>CT Tủ mát chỉ do ĐDKD chụp</b> — Banker: tối thiểu ${TM_MIN_DAT} bộ hình đạt/CH là ok; không tính vào tổng suất Tbay.</span>`:`<div class="chips" style="margin:0">${aStChip(null,'Tất cả')}${aStChip('dat_chuan',T5_STLABEL.dat_chuan)}${aStChip('da_chup',T5_STLABEL.da_chup)}${aStChip('chua_chup',T5_STLABEL.chua_chup)}${nTm>0?aStChip('tm',T5_STLABEL.tm):''}</div>`}
-      <div class="chips" style="margin:0 0 0 auto">${aDdChip('chup','📷 ĐDKD chụp')}${aDdChip('chua','ĐDKD chưa chụp')}</div></div>
+      ${rowsAllTm?`<div class="chips" style="margin:0">${aStChip(null,'Tất cả')}${aStChip('tm_dat',T5_STLABEL.tm_dat)}${aStChip('tm_p',T5_STLABEL.tm_p)}${aStChip('tm_0',T5_STLABEL.tm_0)}</div><span class="small" style="color:#475569"><b>CT Tủ mát chỉ do ĐDKD chụp</b> — Banker: tối thiểu ${TM_MIN_DAT} bộ hình đạt/CH là ok; không tính vào tổng suất Tbay.</span>`:`<div class="chips" style="margin:0">${aStChip(null,'Tất cả')}${aStChip('dat_chuan',T5_STLABEL.dat_chuan)}${aStChip('da_chup',T5_STLABEL.da_chup)}${aStChip('chua_chup',T5_STLABEL.chua_chup)}${nTm>0?aStChip('tm',T5_STLABEL.tm):''}</div>`}</div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
-      <div class="chips" style="margin:0">${aVtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>aVtChip(d,d)).join('')}</div></div>
+      <div class="chips" style="margin:0">${aVtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>aVtChip(d,d)).join('')}</div><span style="width:1px;height:20px;background:var(--border);margin:0 6px"></span><div class="chips" style="margin:0">${aDdChip('chup','📷 ĐDKD chụp')}${aDdChip('chua','ĐDKD chưa chụp')}</div></div>
     ${rowsAllTm?'':`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">DS import Dnl Tbay T11 — điều kiện "Dnl doanh số":</span>
-      <div class="chips" style="margin:0">${aDd6Chip(null,'Tất cả')}${aDd6Chip(true,'🏆 Có trong DS import Dnl')}${aDd6Chip(false,'Không có trong DS import')}${aDd6Chip('bk','💰 Có banker doanh số')}${aDd6Chip('dat','✅ Đã đạt Dnl doanh số')}${aDd6Chip('chua_dnl','⏳ Chưa đạt Dnl doanh số')}</div></div>`}
+      <div class="chips" style="margin:0">${aDd6Chip(null,'Tất cả')}${aDd6Chip(true,'🏆 Có trong DS import Dnl')}${aDd6Chip(false,'Không có trong DS import')}${aDd6Chip('dat','✅ Đã đạt Dnl doanh số')}${aDd6Chip('chua_dnl','⏳ Chưa đạt Dnl doanh số')}</div></div>`}
     ${chipFiltered ? `<div class="small" style="margin-bottom:6px;color:#b45309"><b>Đang lọc:</b> biểu đồ và bảng bên dưới chỉ tính ${fmt(rowsC.length)}/${fmt(rows.length)} suất Tbay phù hợp (bộ lọc được giữ khi anh bấm khoan xuống SS → ĐDKD → quầy; thẻ KPI phía trên vẫn là tổng của phạm vi đang xem).</div>` : ''}`;
     const map = {};
     rowsC.forEach(r=>{
@@ -2733,7 +2734,8 @@ function renderTab5Body(){
         ${vtChip(null,'Tất cả')}
         ${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}
       </div>
-      <div class="chips" style="margin:0 0 0 auto">
+      <span style="width:1px;height:20px;background:var(--border);margin:0 6px"></span>
+      <div class="chips" style="margin:0">
         ${ddChip('chup','📷 ĐDKD chụp')}
         ${ddChip('chua','ĐDKD chưa chụp')}
       </div>
@@ -2742,9 +2744,8 @@ function renderTab5Body(){
       <span class="small" style="color:var(--sub);font-weight:600">DS import Dnl Tbay T11 — điều kiện "Dnl doanh số":</span>
       <div class="chips" style="margin:0">
         ${dat6Chip(null,'Tất cả')}
-        ${dat6Chip(true,'🏆 Hoàn thành ≥1 lần (đủ ĐK)')}
-        ${dat6Chip(false,'Chưa đạt ≥6')}
-        ${dat6Chip('bk','💰 Có banker doanh số')}
+        ${dat6Chip(true,'🏆 Có trong DS import Dnl')}
+        ${dat6Chip(false,'Không có trong DS import')}
         ${dat6Chip('dat','✅ Đã đạt Dnl doanh số')}
         ${dat6Chip('chua_dnl','⏳ Chưa đạt Dnl doanh số')}
       </div>
@@ -4045,7 +4046,7 @@ function t14FilterBar(combo){
       <div class="filter-field" style="min-width:260px"><label>Tìm CH (mã hoặc tên)</label><input type="text" value="${(f.q||'').replace(/"/g,'&quot;')}" placeholder="Nhập mã CH hoặc tên CH, Enter để tìm..." onchange="window.__t14setQ(this.value)"></div>
     </div></div>`;
 }
-function t14ChipBars(lscope){
+function t14ChipBars(lscope, row2Extra){
   const f = t14state;
   const base = f.st===null ? lscope : lscope.filter(r=>(f.st==='chua')===!!r.chua);
   const stChip = (val,label)=>{
@@ -4060,17 +4061,21 @@ function t14ChipBars(lscope){
     const cnt = val===null ? base.length : base.filter(r=>(r.vt||'').includes(val)).length;
     return `<button class="chip${f.vt===val?' active':''}" onclick="window.__t14vtF(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`;
   };
-  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <span class="small" style="color:var(--sub);font-weight:600">Trạng thái mua combo:</span>
-      <div class="chips" style="margin:0">${stChip(null,'Tất cả CH tham gia')}${stChip('mua','✅ Đã mua')}${stChip('chua','🎯 Chưa mua (cần chào)')}</div>
+  return `<div style="display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="small" style="color:var(--sub);font-weight:600">Trạng thái mua combo:</span>
+        <div class="chips" style="margin:0">${stChip(null,'Tất cả CH tham gia')}${stChip('mua','✅ Đã mua')}${stChip('chua','🎯 Chưa mua (cần chào)')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="small" style="color:var(--sub);font-weight:600">Số đơn đạt:</span>
+        <div class="chips" style="margin:0">${donChip(null,'Tất cả')}${donChip('1','1 đơn')}${donChip('2+','≥2 đơn')}</div>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <span class="small" style="color:var(--sub);font-weight:600">Số đơn đạt:</span>
-      <div class="chips" style="margin:0">${donChip(null,'Tất cả')}${donChip('1','1 đơn')}${donChip('2+','≥2 đơn')}</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-      <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
-      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>
+    <div style="display:flex;align-items:center;gap:8px 28px;flex-wrap:wrap;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
+        <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>
+      </div>${row2Extra||''}
     </div>`;
 }
 function t14TblCap(combo){
@@ -4104,12 +4109,12 @@ function renderTab14Body(){
     inner = `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px"><h3 style="font-size:13.5px;color:var(--sub);margin:0">Chi tiết từng quầy (${fmt(lrows.length)}${lrows.length!==lscope.length?'/'+fmt(lscope.length):''} quầy)</h3>${(!searching && !f.ddkd)?`<button class="btn-clear" onclick="window.__t14back()">⬅ Về bảng tổng hợp</button>`:''}</div>` + t14TblCap(combo) + t14ChTable(combo, lrows);
   } else {
     const agg = !f.ss ? t14AggTable(rows, 'ss', combo, SSID_TH, 'ss') : t14AggTable(rows, 'ddkd', combo, '<th>ĐDKD</th>', 'ddkd');
-    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t14', ()=>renderTab14Body())}<button class="btn-clear" onclick="window.__t14flat(true)">📋 Xem thẳng danh sách CH (${fmt(lrows.length)})</button></div>${t14TblCap(combo)}${agg}`;
+    inner = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px">${t14TblCap(combo).replace('margin:6px 0 8px','margin:0')}<button class="btn-clear" onclick="window.__t14flat(true)">📋 Xem thẳng danh sách CH (${fmt(lrows.length)})</button></div>${agg}`;
   }
   body.innerHTML = `${t14KpiRow(combo, rows)}
     ${t14FilterBar(combo)}
     ${t14ProgBar()}
-    <div class="card">${crumbHtml}${t14ChipBars(lscope)}${inner}</div>
+    <div class="card">${crumbHtml}${t14ChipBars(lscope, (!showCh && !f.ss) ? topfChips('t14', ()=>renderTab14Body()) : '')}${inner}</div>
     ${t14NoteBox(combo)}
     ${t14Banner(combo)}`;
 }
