@@ -816,6 +816,20 @@ function ratioColorHex(col){ return RATIO_COLOR_HEX[col] || RATIO_COLOR_HEX.gray
 // header meta
 document.getElementById('mUpdated').textContent = DATA.meta.updated;
 document.getElementById('mNhip').textContent = DATA.meta.nhip + '% (' + Math.round(DATA.meta.nhip/100*25) + '/25 ngày công)';
+// 13/11: nút bật/tắt TOÀN MÀN HÌNH thật (ẩn thanh Taskbar/thanh trình duyệt khi trình chiếu họp) — bấm lần nữa hoặc Esc để thoát
+(function(){ try{
+  const bx = document.querySelector('.topbar .badges'); if(!bx || document.getElementById('btnFs')) return;
+  const de = document.documentElement, req = de.requestFullscreen || de.webkitRequestFullscreen;
+  if(!req) return;
+  const btn = document.createElement('button'); btn.id = 'btnFs'; btn.className = 'badge'; btn.type = 'button';
+  btn.style.cssText = 'cursor:pointer;font:inherit;font-weight:700;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.2);color:#fff';
+  const isFs = ()=> !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const upd = ()=>{ btn.textContent = isFs() ? '⤡ Thoát toàn màn hình' : '⛶ Toàn màn hình'; btn.title = isFs() ? 'Thoát toàn màn hình (hoặc nhấn Esc)' : 'Chiếu toàn màn hình: ẩn thanh Taskbar và thanh trình duyệt'; };
+  btn.onclick = ()=>{ if(isFs()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); } else { req.call(de); } };
+  document.addEventListener('fullscreenchange', upd); document.addEventListener('webkitfullscreenchange', upd); upd();
+  bx.insertBefore(btn, bx.firstChild);
+  const st = document.createElement('style'); st.textContent = 'body{padding-bottom:40px}'; document.head.appendChild(st);
+}catch(e){} })();
 document.getElementById('bSS').textContent = DATA.meta.so_ss + ' SS';
 document.getElementById('bDDKD').textContent = DATA.meta.so_ddkd + ' ĐDKD';
 document.getElementById('bQuay').textContent = '~' + fmt(DATA.meta.so_quay) + ' quầy';
@@ -925,7 +939,7 @@ const T1_GK_ORDER = T1_PROG_ORDER.filter(p=>p!=='mbs_ds' && p!=='mbs_vip');
 let t1Group = 'gk';   // 'gk' = tab Gắn kết RTL | 'mbs' = tab MBS Hội viên (dùng chung engine Tab 1)
 function t1IsMbs(prog){ return prog==='mbs_ds' || prog==='mbs_vip'; }
 const t1F1 = x => (+x||0).toLocaleString('vi-VN',{maximumFractionDigits:1});
-const T1_FRESH = ()=>({ss:null, ddkd:null, q:'', st:null, vt:null, flat:false, dnl:false, p70:false, grp:null});
+const T1_FRESH = ()=>({ss:null, ddkd:null, q:'', st:null, vt:null, flat:false, dnl:false, p70:false, grp:null, td:null});
 let t1state = Object.assign({prog:'giavi'}, T1_FRESH());
 
 function t1Meta(prog){ return T1_PROGS_GROWTH.includes(prog) ? DATA.tab1[prog] : DATA.tab1_kpiobj[prog]; }
@@ -957,6 +971,10 @@ window.__t1clear = function(){ t1state = Object.assign({prog:t1state.prog}, T1_F
 window.__t1stF = function(v){ t1state.st = v; renderTab1Body(); };
 window.__t1vtF = function(v){ t1state.vt = v; renderTab1Body(); };
 window.__t1grpF = function(v){ t1state.grp = v; renderTab1Body(); };
+window.__t1tdF = function(v){ t1state.td = v; renderTab1Body(); };
+// 13/11: tiến độ CH MBS = MTD ÷ chỉ tiêu nền so với nhịp thời gian: rớt (< nhịp) · đạt (≥ nhịp, < 100% nền) · vượt (≥ 100% nền)
+const T1_TD_LABEL = {rot:'Rớt tiến độ', dat:'Đạt tiến độ', vuot:'Vượt tiến độ'};
+function t1Td(r){ const p = (r.pct!=null ? r.pct*100 : ((r.rr>0)?r.mtd/r.rr*100:0)); return p>=100 ? 'vuot' : (p>=DATA.meta.nhip ? 'dat' : 'rot'); }
 const T1_GRP_LABEL = {le:'Lẻ', vip35:'VIP3·5', vipsi:'VIPSI', t20:'CH 20–99tr', t100:'CH ≥100tr'};
 function t1GrpOk(r, g){ const n = (r.m1||0)/1e6; return g==='le' ? r.grp==='le' : g==='vip35' ? (r.grp==='vip3'||r.grp==='vip5') : g==='vipsi' ? r.grp==='vipsi' : g==='t20' ? (n>=20 && n<100) : g==='t100' ? n>=100 : true; }
 window.__t1flat = function(v){ t1state.flat = !!v; renderTab1Body(); };
@@ -979,7 +997,7 @@ function t1ScopeRows(){
 }
 function t1ApplyChips(rows){
   const f = t1state;
-  return rows.filter(r=> (!f.st || t1St(r)===f.st) && (f.vt===null || (r.vt||'').includes(f.vt)) && (!f.dnl || r.dnl_da) && (!f.p70 || t1P70(r)) && (!f.grp || !t1IsMbs(f.prog) || t1GrpOk(r, f.grp)));
+  return rows.filter(r=> (!f.st || t1St(r)===f.st) && (f.vt===null || (r.vt||'').includes(f.vt)) && (!f.dnl || r.dnl_da) && (!f.p70 || t1P70(r)) && (!f.grp || !t1IsMbs(f.prog) || t1GrpOk(r, f.grp)) && (!f.td || !t1IsMbs(f.prog) || t1Td(r)===f.td));
 }
 function t1P70(r){ const m = r.moc || 1700000; return r.mtd >= 0.5*m && !r.dnl_da; }  // 28/10: CH mua ≥50% mốc mà CHƯA đăng ký Dnl đồng hồ Tea365 (trước đó 70%)
 function t1FilteredRows(){ return t1ApplyChips(t1ScopeRows()); }
@@ -1210,12 +1228,16 @@ function t1ChipBars(scope, prog){
   const dnlN = scope.filter(r=>r.dnl_da).length;
   const dnlChip = `<button class="chip${f.dnl?' active':''}" onclick="window.__t1dnlF(${f.dnl?'false':'true'})">🧊 Đã ĐK Dnl đồng hồ Tea365 (${fmt(dnlN)})</button>`;
   const dnlChipTdc = `<button class="chip${f.dnl?' active':''}" title="CH đã được duyệt đăng ký chương trình này trên Tbay (file DS CH tham gia CT)" onclick="window.__t1dnlF(${f.dnl?'false':'true'})">🚚 Đã đăng ký Dnl TDC (${fmt(dnlN)})</button>`;
+  const tdCnt = k=>scope.filter(r=>t1Td(r)===k).length;
+  const tdChip = (k,lbl,tip)=>`<button class="chip${f.td===k?' active':''}" title="${tip}" onclick="window.__t1tdF(${f.td===k?'null':`'${k}'`})">${lbl} (${fmt(tdCnt(k))})</button>`;
+  const tdChips = `<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Tiến độ (TH ÷ CT nền):</span>${tdChip('rot','🔻 Rớt tiến độ','Thực hiện/chỉ tiêu nền dưới nhịp thời gian ('+DATA.meta.nhip+'%)')}${tdChip('dat','✅ Đạt tiến độ','Từ nhịp thời gian ('+DATA.meta.nhip+'%) đến dưới 100% chỉ tiêu nền')}${tdChip('vuot','🚀 Vượt tiến độ','Đã đạt từ 100% chỉ tiêu nền trở lên')}</div>`;
   const p70N = scope.filter(t1P70).length;
   const p70Chip = `<button class="chip${f.p70?' active':''}" title="CH có MTD Tea365 ≥ 50% mốc 1.700.000đ (≥ 850.000đ, gồm cả CH đã đạt mốc) mà CHƯA đăng ký Dnl đồng hồ Tea365" onclick="window.__t1p70F(${f.p70?'false':'true'})">📈 Mua ≥50% mốc 1tr7 · chưa ĐK Dnl (${fmt(p70N)})</button>`;
   return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Trạng thái:</span>
       <div class="chips" style="margin:0">${stChip(null,'Tất cả')}${stList.map(s=>stChip(s,lbl[s])).join('')}</div>
       ${prog==='bev'?`<div class="chips" style="margin:0 0 0 auto">${p70Chip}<span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-left:8px">Dnl đồng hồ Tea365:</span>${dnlChip}</div>`:''}
+      ${t1IsMbs(prog)?tdChips:''}
       ${t1IsTdc(prog)?`<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Dnl TDC:</span>${dnlChipTdc}</div>`:''}
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -1341,6 +1363,7 @@ function renderTab1Body(){
   if(f.vt!==null) crumbs.push(`<a onclick="window.__t1vtF(null)">Viếng thăm: ${f.vt}</a>`);
   if(f.grp && t1IsMbs(prog)) crumbs.push(`<a onclick="window.__t1grpF(null)">Nhóm CH: ${T1_GRP_LABEL[f.grp]}</a>`);
   if(f.p70) crumbs.push(`<a onclick="window.__t1p70F(false)">Mua ≥50% mốc 1tr7, chưa ĐK Dnl</a>`);
+  if(f.td && t1IsMbs(prog)) crumbs.push(`<a onclick="window.__t1tdF(null)">Tiến độ: ${T1_TD_LABEL[f.td]}</a>`);
   if(f.dnl) crumbs.push(`<a onclick="window.__t1dnlF(false)">${t1IsTdc(prog)?'Dnl TDC':'Dnl đồng hồ Tea365'}: đã đăng ký</a>`);
   const crumbHtml = crumbs.length ? `<div class="breadcrumb"><a onclick="window.__t1clear()">Tất cả</a> › ${crumbs.join(' › ')}</div>` : '';
   const showCh = searching || f.ddkd || f.flat;
