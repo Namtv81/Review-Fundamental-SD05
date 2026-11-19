@@ -1005,8 +1005,8 @@ window.__t1tdF = function(v){ t1state.td = v; renderTab1Body(); };
 // 13/11: tiến độ CH MBS = MTD ÷ chỉ tiêu nền so với nhịp thời gian: rớt (< nhịp) · đạt (≥ nhịp, < 100% nền) · vượt (≥ 100% nền)
 const T1_TD_LABEL = {rot:'Rớt tiến độ', dat:'Đạt tiến độ', vuot:'Vượt tiến độ'};
 function t1Td(r){ const p = (r.pct!=null ? r.pct*100 : ((r.rr>0)?r.mtd/r.rr*100:0)); return p>=100 ? 'vuot' : (p>=DATA.meta.nhip ? 'dat' : 'rot'); }
-const T1_GRP_LABEL = {le:'Lẻ', vip35:'VIP3·5', vipsi:'VIPSI', t20:'CH 20–99tr', t100:'CH ≥100tr'};
-function t1GrpOk(r, g){ const n = (r.m1||0)/1e6; return g==='le' ? r.grp==='le' : g==='vip35' ? (r.grp==='vip3'||r.grp==='vip5') : g==='vipsi' ? r.grp==='vipsi' : g==='t20' ? (n>=20 && n<100) : g==='t100' ? n>=100 : true; }
+const T1_GRP_LABEL = {le:'Lẻ', vip35:'VIP3·5', vipsi:'VIPSI', t10:'CH 10–49tr', t50:'CH 50–199tr', t200:'CH ≥200tr'};
+function t1GrpOk(r, g){ const n = (r.m1||0)/1e6; return g==='le' ? r.grp==='le' : g==='vip35' ? (r.grp==='vip3'||r.grp==='vip5') : g==='vipsi' ? r.grp==='vipsi' : g==='t10' ? (n>=10 && n<50) : g==='t50' ? (n>=50 && n<200) : g==='t200' ? n>=200 : true; }
 window.__t1flat = function(v){ t1state.flat = !!v; renderTab1Body(); };
 window.__t1dnlF = function(v){ t1state.dnl = !!v; if(v) t1state.p70 = false; renderTab1Body(); };
 window.__t1p70F = function(v){ t1state.p70 = !!v; if(v) t1state.dnl = false; renderTab1Body(); };
@@ -1274,7 +1274,7 @@ function t1ChipBars(scope, prog){
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
       <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>
-    </div>${t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t20','t100'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t20'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 20tr đến dưới 100tr':g==='t100'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 100tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:''}`;
+    </div>${t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t10','t50','t200'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t10'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 10tr đến dưới 50tr':g==='t50'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 50tr đến dưới 200tr':g==='t200'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 200tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:''}`;
 }
 // ===== v48 (10/10): BẢNG TỔNG HỢP MỌI CT GẮN KẾT THEO TỪNG CH (cuối Tab) =====
 let T1SUM_CACHE = null;
