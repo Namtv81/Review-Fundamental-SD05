@@ -1592,7 +1592,7 @@ window.__xlT14 = function(btn){
 window.__xlT5 = function(btn){
   const rows = t5rowsFiltered().filter(r=> t5stIs(r,t5statusFilter) && (t5visitFilter===null || (r.vt||'').includes(t5visitFilter)) && t5d6Pred(r,t5dat6Filter) && (t5ddFilter===null || (t5ddFilter==='chup' ? (r.dd_chup||0)>0 : (r.dd_chup||0)===0)));
   const fl = t5filters;
-  const parts = [fl.ss&&('SS: '+fl.ss), fl.ddkd&&('ĐDKD: '+fl.ddkd), fl.ct&&('CT: '+fl.ct), fl.mucdk&&('Mức ĐK: '+fl.mucdk), t5statusFilter&&('Trạng thái: '+(T5_STLABEL[t5statusFilter]||t5statusFilter)), t5visitFilter!==null&&('Viếng thăm: '+t5visitFilter), t5dat6Filter!==null&&('Import Dnl: '+(t5dat6Filter===true?'Có':t5dat6Filter===false?'Không':t5dat6Filter)), t5ddFilter!==null&&('BH ĐDKD chụp: '+(t5ddFilter==='chup'?'Đã chụp':'Chưa chụp'))];
+  const parts = [fl.ss&&('SS: '+fl.ss), fl.ddkd&&('ĐDKD: '+fl.ddkd), fl.ct&&('CT: '+t5ctArr().join(', ')), fl.mucdk&&('Mức ĐK: '+fl.mucdk), t5statusFilter&&('Trạng thái: '+(T5_STLABEL[t5statusFilter]||t5statusFilter)), t5visitFilter!==null&&('Viếng thăm: '+t5visitFilter), t5dat6Filter!==null&&('Import Dnl: '+(t5dat6Filter===true?'Có':t5dat6Filter===false?'Không':t5dat6Filter)), t5ddFilter!==null&&('BH ĐDKD chụp: '+(t5ddFilter==='chup'?'Đã chụp':'Chưa chụp'))];
   const stOf = r => r.st==='tm' ? T5_STLABEL[r.tms] : T5_STLABEL[r.st];
   const cols = [
     {h:'Chương trình trưng bày', w:34, k:'txt', f:r=>r.ct}, {h:'Mức ĐK', w:18, k:'txt', f:r=>r.mucdk},
@@ -3093,13 +3093,15 @@ function t5d6Pred(r,f){ return f===null || (f==='bk' ? r.banker!=null : f==='dat
 let t5dat6Filter = null; // mục153: loc theo da Dat >=6 bo anh duyet o Trung bay THANG 8 (true/false/null=tat ca)
 const T5_STCOLORS = {dat_chuan:'#16a34a', da_chup:'#f59e0b', chua_chup:'#dc2626', tm:'#64748b', tm_dat:'#16a34a', tm_p:'#f59e0b', tm_0:'#dc2626'};
 const T5_STLABEL = {dat_chuan:'Hoàn thành ≥1 lần', da_chup:'Đã chụp (chưa duyệt)', chua_chup:'Chưa chụp', tm:'Tủ mát (chỉ ĐDKD chụp)', tm_dat:'Đạt ≥2 bộ hình đạt', tm_p:'Đã chụp (<2 bộ đạt)', tm_0:'Chưa chụp'};
+function t5ctArr(){ const c=t5filters.ct; return c==null?[]:(Array.isArray(c)?c:[c]); }   // v88: chọn nhiều chương trình (tick)
+function t5ctHas(v){ const c=t5filters.ct; return Array.isArray(c) ? c.includes(v) : c===v; }
 function t5rowsFiltered(){
-  return TAB5ROWS.filter(r=> (!t5filters.ss || r.ss===t5filters.ss) && (!t5filters.ddkd || r.ddkd===t5filters.ddkd) && (!t5filters.ct || r.ct===t5filters.ct) && (!t5filters.mucdk || r.mucdk===t5filters.mucdk));
+  return TAB5ROWS.filter(r=> (!t5filters.ss || r.ss===t5filters.ss) && (!t5filters.ddkd || r.ddkd===t5filters.ddkd) && (!t5filters.ct || t5ctHas(r.ct)) && (!t5filters.mucdk || r.mucdk===t5filters.mucdk));
 }
 function renderTab5(){
   const p = document.getElementById('panel-t5');
   p.innerHTML = `
-    <style>#t5body .chip{padding:4px 11px;font-size:12.5px}#t5body .chips{gap:6px}</style>
+    <style>#t5body .chip{padding:4px 11px;font-size:12.5px}#t5body .chips{gap:6px}.t5ms{position:relative;min-width:300px}.t5msbtn{width:100%;text-align:left;padding:7px 28px 7px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}.t5msbtn:after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#64748b}.t5mspanel{position:absolute;z-index:60;top:100%;left:0;margin-top:3px;min-width:100%;max-width:520px;max-height:320px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px 0}.t5mspanel label{display:flex;gap:8px;align-items:flex-start;padding:6px 12px;font-size:13px;cursor:pointer;line-height:1.3;text-transform:none;letter-spacing:0;font-weight:400;color:#0f172a}.t5mspanel label:hover{background:#f1f5f9}.t5mspanel input{margin-top:2px}.t5mspanel .t5msact{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;background:#fff}.t5mspanel .t5msact a{font-size:12px;color:#1d4ed8;cursor:pointer;text-decoration:underline}</style>
     <div class="kpi-row" id="t5kpis"></div>
     <div class="card">
       <div class="chips">
@@ -3109,7 +3111,7 @@ function renderTab5(){
       <div class="filter-row">
         <div class="filter-field"><label>Sales Supervisor</label><select id="t5ssSel"><option value="">Tất cả SS</option></select></div>
         <div class="filter-field"><label>Vị trí / ĐDKD</label><select id="t5ddkdSel"><option value="">Tất cả vị trí</option></select></div>
-        <div class="filter-field"><label>Chương trình trưng bày</label><select id="t5ctSel"><option value="">Tất cả chương trình</option></select></div>
+        <div class="filter-field"><label>Chương trình trưng bày</label><div class="t5ms" id="t5ctBox"><button type="button" class="t5msbtn" id="t5ctBtn">Tất cả chương trình</button><div class="t5mspanel" id="t5ctPanel" style="display:none"></div></div></div>
         <button class="btn-clear" onclick="window.__t5clear()">↺ Xóa lọc</button>
       ${__XL_BTN('__xlT5')}
         <div style="flex:1"></div>
@@ -3130,16 +3132,28 @@ function renderTab5(){
 window.__t5mode = function(m){ t5mode=m; t5filters={ss:null,ddkd:null,ct:null,mucdk:null}; t5statusFilter=null; t5visitFilter=null; t5dat6Filter=null; t5ddFilter=null; renderTab5(); };
 window.__t5clear = function(){ t5filters={ss:null,ddkd:null,ct:null,mucdk:null}; t5statusFilter=null; t5visitFilter=null; t5dat6Filter=null; t5ddFilter=null; renderTab5(); };
 function populateT5Filters(){
-  const ssSel = document.getElementById('t5ssSel'), ddkdSel = document.getElementById('t5ddkdSel'), ctSel = document.getElementById('t5ctSel');
+  const ssSel = document.getElementById('t5ssSel'), ddkdSel = document.getElementById('t5ddkdSel');
   DATA.meta.ss_list.forEach(ss=>{ const o=document.createElement('option'); o.value=ss; o.textContent=ss; if(ss===t5filters.ss)o.selected=true; ssSel.appendChild(o); });
   const ctList = [...new Set(TAB5ROWS.map(r=>r.ct))].sort();
-  ctList.forEach(ct=>{ const o=document.createElement('option'); o.value=ct; o.textContent=ct; if(ct===t5filters.ct)o.selected=true; ctSel.appendChild(o); });
+  // v88: ô "Chương trình trưng bày" = danh sách TICK chọn nhiều chương trình (gộp số liệu các CT đã chọn)
+  (function(){
+    const btn=document.getElementById('t5ctBtn'), pan=document.getElementById('t5ctPanel'); if(!btn||!pan) return;
+    const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const sel=new Set(t5ctArr());
+    pan.innerHTML = '<div class="t5msact"><a data-a="all">Chọn tất cả</a><a data-a="none">Bỏ chọn (xem tất cả)</a></div>' + ctList.map(c=>'<label><input type="checkbox" value="'+esc(c)+'"'+(sel.has(c)?' checked':'')+'><span>'+esc(c)+'</span></label>').join('');
+    const label=()=>{ const a=t5ctArr(); btn.textContent = a.length===0 ? 'Tất cả chương trình' : (a.length===1 ? a[0] : (a.length+' chương trình đã chọn')); btn.title = a.join('\n'); };
+    const apply=()=>{ const a=[...pan.querySelectorAll('input:checked')].map(i=>i.value); t5filters.ct = a.length ? a : null; t5filters.mucdk=null; label(); renderTab5Body(); };
+    label();
+    btn.onclick = e=>{ e.stopPropagation(); pan.style.display = pan.style.display==='none' ? 'block' : 'none'; };
+    pan.onclick = e=>{ e.stopPropagation(); const a=e.target.getAttribute && e.target.getAttribute('data-a'); if(a){ pan.querySelectorAll('input').forEach(i=>{ i.checked=(a==='all'); }); apply(); } };
+    pan.onchange = apply;
+    if(!window.__t5ctOut){ window.__t5ctOut=true; document.addEventListener('click', ()=>{ const p=document.getElementById('t5ctPanel'); if(p) p.style.display='none'; }); }
+  })();
   const ddkdPool = TAB5ROWS.filter(r=>!t5filters.ss || r.ss===t5filters.ss);
   const ddkdList = [...new Set(ddkdPool.map(r=>r.ddkd))].sort();
   ddkdList.forEach(d=>{ const o=document.createElement('option'); o.value=d; o.textContent=d; if(d===t5filters.ddkd)o.selected=true; ddkdSel.appendChild(o); });
   ssSel.onchange = ()=>{ t5filters.ss=ssSel.value||null; t5filters.ddkd=null; renderTab5(); };
   ddkdSel.onchange = ()=>{ t5filters.ddkd=ddkdSel.value||null; renderTab5Body(); };
-  ctSel.onchange = ()=>{ t5filters.ct=ctSel.value||null; t5filters.mucdk=null; renderTab5Body(); };
 }
 function t5statCounts(rows){
   const c = {dat_chuan:0, da_chup:0, chua_chup:0};
@@ -3181,7 +3195,7 @@ function renderTab5Body(){
         <div class="ns">• Bình quân: <b>${soQuayAll>0?(sumBHdd/soQuayAll).toFixed(2).replace('.',','):0}</b> BH ĐDKD chụp / CH Tbay</div></div></div>
   `;
   const crumbs = [];
-  if(t5filters.ct) crumbs.push(`<a onclick="window.__t5set('ct',null)">CT: ${t5filters.ct}</a>`);
+  if(t5filters.ct) crumbs.push(`<a onclick="window.__t5set('ct',null)">CT: ${t5ctArr().join(', ')}</a>`);
   if(t5filters.mucdk) crumbs.push(`<a onclick="window.__t5set('mucdk',null)">Mức ĐK: ${t5filters.mucdk}</a>`);
   if(t5filters.ss) crumbs.push(`<a onclick="window.__t5set('ss',null)">SS: ${t5filters.ss}</a>`);
   if(t5filters.ddkd) crumbs.push(`<a onclick="window.__t5set('ddkd',null)">ĐDKD: ${t5filters.ddkd}</a>`);
