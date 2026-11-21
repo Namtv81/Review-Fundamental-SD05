@@ -1592,7 +1592,7 @@ window.__xlT14 = function(btn){
 window.__xlT5 = function(btn){
   const rows = t5rowsFiltered().filter(r=> t5stIs(r,t5statusFilter) && (t5visitFilter===null || (r.vt||'').includes(t5visitFilter)) && t5d6Pred(r,t5dat6Filter) && (t5ddFilter===null || (t5ddFilter==='chup' ? (r.dd_chup||0)>0 : (r.dd_chup||0)===0)));
   const fl = t5filters;
-  const parts = [fl.ss&&('SS: '+fl.ss), fl.ddkd&&('ĐDKD: '+fl.ddkd), fl.ct&&('CT: '+t5ctArr().join(', ')), fl.mucdk&&('Mức ĐK: '+fl.mucdk), t5statusFilter&&('Trạng thái: '+(T5_STLABEL[t5statusFilter]||t5statusFilter)), t5visitFilter!==null&&('Viếng thăm: '+t5visitFilter), t5dat6Filter!==null&&('Import Dnl: '+(t5dat6Filter===true?'Có':t5dat6Filter===false?'Không':t5dat6Filter)), t5ddFilter!==null&&('BH ĐDKD chụp: '+(t5ddFilter==='chup'?'Đã chụp':'Chưa chụp'))];
+  const parts = [fl.ss&&('SS: '+fl.ss), fl.ddkd&&('ĐDKD: '+fl.ddkd), fl.ct&&('CT: '+t5ctArr().join(', ')), fl.q&&('Tìm: '+fl.q), fl.mucdk&&('Mức ĐK: '+fl.mucdk), t5statusFilter&&('Trạng thái: '+(T5_STLABEL[t5statusFilter]||t5statusFilter)), t5visitFilter!==null&&('Viếng thăm: '+t5visitFilter), t5dat6Filter!==null&&('Import Dnl: '+(t5dat6Filter===true?'Có':t5dat6Filter===false?'Không':t5dat6Filter)), t5ddFilter!==null&&('BH ĐDKD chụp: '+(t5ddFilter==='chup'?'Đã chụp':'Chưa chụp'))];
   const stOf = r => r.st==='tm' ? T5_STLABEL[r.tms] : T5_STLABEL[r.st];
   const cols = [
     {h:'Chương trình trưng bày', w:34, k:'txt', f:r=>r.ct}, {h:'Mức ĐK', w:18, k:'txt', f:r=>r.mucdk},
@@ -3095,13 +3095,55 @@ const T5_STCOLORS = {dat_chuan:'#16a34a', da_chup:'#f59e0b', chua_chup:'#dc2626'
 const T5_STLABEL = {dat_chuan:'Hoàn thành ≥1 lần', da_chup:'Đã chụp (chưa duyệt)', chua_chup:'Chưa chụp', tm:'Tủ mát (chỉ ĐDKD chụp)', tm_dat:'Đạt ≥2 bộ hình đạt', tm_p:'Đã chụp (<2 bộ đạt)', tm_0:'Chưa chụp'};
 function t5ctArr(){ const c=t5filters.ct; return c==null?[]:(Array.isArray(c)?c:[c]); }   // v88: chọn nhiều chương trình (tick)
 function t5ctHas(v){ const c=t5filters.ct; return Array.isArray(c) ? c.includes(v) : c===v; }
+// v89: tìm quầy theo mã / tên (lọc cả Tab) + thẻ khách hàng liệt kê dọc mọi chương trình (suất) của quầy
+function t5norm(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'d').toLowerCase().trim(); }
+function t5qOk(r){
+  const q=(t5filters.q||'').trim(); if(!q) return true;
+  if(/^\d+$/.test(q)) return String(r.ma).includes(q);
+  const nq=t5norm(q); return t5norm(r.ten).includes(nq) || String(r.ma).toLowerCase().includes(nq);
+}
+window.__t5search = function(){ const inp=document.getElementById('storeSearchT5'); t5filters.q = (inp && inp.value.trim()) || null; t5filters.mucdk=null; renderTab5Body(); };
+window.__t5pick = function(ma){ const inp=document.getElementById('storeSearchT5'); if(inp) inp.value=ma; t5filters.q=ma; renderTab5Body(); };
+function t5renderCard(){
+  const box=document.getElementById('t5card'); if(!box) return;
+  const q=(t5filters.q||'').trim(); if(!q){ box.innerHTML=''; return; }
+  const by=new Map(); TAB5ROWS.forEach(r=>{ if(t5qOk(r)){ if(!by.has(r.ma)) by.set(r.ma,[]); by.get(r.ma).push(r); } });
+  const hd='<div style="margin:8px 0;padding:10px 12px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:10px">';
+  if(by.size===0){ box.innerHTML = hd+'🔎 Không tìm thấy quầy nào khớp "<b>'+q.replace(/</g,'&lt;')+'</b>" ở Tab Trưng bày (chỉ có quầy đăng ký chương trình Tbay).</div>'; return; }
+  let ma = by.has(q) ? q : (by.size===1 ? [...by.keys()][0] : null);
+  if(ma===null){
+    const items=[...by.entries()].sort((a,b)=>String(a[1][0].ten).localeCompare(String(b[1][0].ten)));
+    const show=items.slice(0,15);
+    box.innerHTML = hd+'🔎 Có <b>'+items.length+'</b> quầy khớp "<b>'+q.replace(/</g,'&lt;')+'</b>" — bấm vào 1 quầy để xem tổng hợp các chương trình theo suất:<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+
+      show.map(([m,rs])=>'<a class="chip" style="cursor:pointer" onclick="window.__t5pick(\''+m+'\')">'+m+' · '+String(rs[0].ten||'').replace(/</g,'&lt;')+' ('+rs.length+' suất)</a>').join('')+
+      (items.length>show.length?'<span class="small">… và '+(items.length-show.length)+' quầy nữa — gõ thêm để thu hẹp</span>':'')+'</div></div>';
+    return;
+  }
+  const rs=by.get(ma).slice().sort((a,b)=>String(a.ct).localeCompare(String(b.ct))); const h0=rs[0];
+  const tb=rs.filter(r=>r.st!=='tm'); const cnt=k=>tb.filter(r=>r.st===k).length;
+  const sum=(f)=>rs.reduce((s,r)=>s+(f(r)||0),0);
+  const bk=rs.filter(r=>r.banker!=null);
+  const tr=rs.map((r,i)=>'<tr><td class="small">'+(i+1)+'</td><td class="small" style="text-align:left">'+r.ct+'</td><td class="small">'+(r.mucdk||'—')+'</td>'+
+    '<td class="small">'+(r.chup||0)+'</td><td class="small">'+(r.duyet||0)+'</td><td class="small">'+pill(r.st==='dat_chuan'?'tim':r.st==='da_chup'?'cam':r.st==='tm'?'cam':'do', r.st==='tm'?T5_STLABEL[r.tms]:T5_STLABEL[r.st])+'</td>'+
+    '<td class="small" style="font-weight:700">'+(r.thuong_anh>0?fmt(r.thuong_anh):'—')+'</td>'+
+    '<td class="small">'+(r.banker!=null?fmt(r.banker):(r.t9_dat6?'<span style="color:#888">CT không có banker</span>':'<span style="color:#888">Chưa đủ ĐK</span>'))+'</td>'+
+    '<td class="small">'+(r.banker!=null?fmt(r.mtd):'—')+'</td><td class="small">'+(r.banker!=null?pctc(color_for_pct_js(r.pctth), r.pctth.toFixed(1)+'%'):'—')+'</td>'+
+    '<td class="small" style="font-weight:700">'+(r.banker!=null?(r.thuong_dat>0?fmt(r.thuong_dat):'—'):'—')+'</td>'+
+    '<td class="small" style="text-align:center;font-weight:700;'+(r.dd_chup>0?'color:#1d4ed8':'color:#dc2626')+'">'+(r.dd_chup||0)+'</td></tr>').join('');
+  const th='<tr><th>#</th><th>Chương trình trưng bày</th><th>Mức ĐK</th><th>Bộ chụp</th><th>Lần HT</th><th>Trạng thái</th><th>Thưởng ảnh (đ)</th><th>Banker (k đ)</th><th>Đã mua (k đ)</th><th>%TH</th><th>Thưởng Dnl (k đ)</th><th>ĐDKD chụp</th></tr>';
+  const tot='<tr style="font-weight:800;background:#f1f5f9"><td class="small" colspan="3" style="text-align:right">TỔNG '+rs.length+' suất</td><td class="small">'+fmt(sum(r=>r.chup))+'</td><td class="small">'+fmt(sum(r=>r.duyet))+'</td><td class="small">—</td><td class="small">'+fmt(sum(r=>r.thuong_anh))+'</td><td class="small">'+fmt(bk.reduce((s,r)=>s+r.banker,0))+'</td><td class="small">—</td><td class="small">—</td><td class="small">'+fmt(sum(r=>r.thuong_dat))+'</td><td class="small">'+fmt(sum(r=>r.dd_chup))+'</td></tr>';
+  box.innerHTML = hd+'<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between"><div><b style="font-size:15px">'+String(h0.ten||'').replace(/</g,'&lt;')+'</b> · Mã <b>'+ma+'</b><div class="small">SS: '+(h0.ss||'—')+' · ĐDKD: '+(h0.ddkd||'—')+' · Lịch VT: '+(h0.vt||'—')+'</div></div>'+
+    '<div class="small">'+rs.length+' suất ('+tb.length+' Tbay'+(rs.length>tb.length?' + '+(rs.length-tb.length)+' Tủ mát':'')+') · Hoàn thành ≥1 lần: <b>'+cnt('dat_chuan')+'</b> · Đã chụp chưa duyệt: <b>'+cnt('da_chup')+'</b> · Chưa chụp: <b>'+cnt('chua_chup')+'</b></div></div>'+
+    '<div style="margin-top:8px"><table class="tbl-compact t5cardt" style="width:100%;table-layout:auto"><thead>'+th+'</thead><tbody>'+tr+tot+'</tbody></table></div>'+
+    '<div class="small" style="margin-top:6px">Mỗi dòng = 1 chương trình (suất) của quầy, liệt kê đủ — không phụ thuộc bộ lọc SS / ĐDKD / chương trình. Thưởng ảnh = ước tính T11.</div></div>';
+}
 function t5rowsFiltered(){
-  return TAB5ROWS.filter(r=> (!t5filters.ss || r.ss===t5filters.ss) && (!t5filters.ddkd || r.ddkd===t5filters.ddkd) && (!t5filters.ct || t5ctHas(r.ct)) && (!t5filters.mucdk || r.mucdk===t5filters.mucdk));
+  return TAB5ROWS.filter(r=> (!t5filters.ss || r.ss===t5filters.ss) && (!t5filters.ddkd || r.ddkd===t5filters.ddkd) && (!t5filters.ct || t5ctHas(r.ct)) && (!t5filters.mucdk || r.mucdk===t5filters.mucdk) && t5qOk(r));
 }
 function renderTab5(){
   const p = document.getElementById('panel-t5');
   p.innerHTML = `
-    <style>#t5body .chip{padding:4px 11px;font-size:12.5px}#t5body .chips{gap:6px}.t5ms{position:relative;min-width:300px}.t5msbtn{width:100%;text-align:left;padding:7px 28px 7px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}.t5msbtn:after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#64748b}.t5mspanel{position:absolute;z-index:60;top:100%;left:0;margin-top:3px;min-width:100%;max-width:520px;max-height:320px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px 0}.t5mspanel label{display:flex;gap:8px;align-items:flex-start;padding:6px 12px;font-size:13px;cursor:pointer;line-height:1.3;text-transform:none;letter-spacing:0;font-weight:400;color:#0f172a}.t5mspanel label:hover{background:#f1f5f9}.t5mspanel input{margin-top:2px}.t5mspanel .t5msact{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;background:#fff}.t5mspanel .t5msact a{font-size:12px;color:#1d4ed8;cursor:pointer;text-decoration:underline}</style>
+    <style>#t5body .chip{padding:4px 11px;font-size:12.5px}#t5body .chips{gap:6px}.t5cardt th,.t5cardt td{padding:4px 5px !important;font-size:11.5px !important;line-height:1.25;white-space:normal !important;word-break:break-word;text-align:center}.t5cardt td:nth-child(2){text-align:left}.t5cardt .pill{font-size:10.5px !important;padding:2px 6px !important;white-space:normal}.t5ms{position:relative;min-width:300px}.t5msbtn{width:100%;text-align:left;padding:7px 28px 7px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative}.t5msbtn:after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#64748b}.t5mspanel{position:absolute;z-index:60;top:100%;left:0;margin-top:3px;min-width:100%;max-width:520px;max-height:320px;overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);padding:4px 0}.t5mspanel label{display:flex;gap:8px;align-items:flex-start;padding:6px 12px;font-size:13px;cursor:pointer;line-height:1.3;text-transform:none;letter-spacing:0;font-weight:400;color:#0f172a}.t5mspanel label:hover{background:#f1f5f9}.t5mspanel input{margin-top:2px}.t5mspanel .t5msact{display:flex;gap:6px;padding:6px 12px;border-bottom:1px solid #e2e8f0;position:sticky;top:0;background:#fff}.t5mspanel .t5msact a{font-size:12px;color:#1d4ed8;cursor:pointer;text-decoration:underline}</style>
     <div class="kpi-row" id="t5kpis"></div>
     <div class="card">
       <div class="chips">
@@ -3115,17 +3157,20 @@ function renderTab5(){
         <button class="btn-clear" onclick="window.__t5clear()">↺ Xóa lọc</button>
       ${__XL_BTN('__xlT5')}
         <div style="flex:1"></div>
-        <div class="filter-field" style="min-width:220px"><label>Tìm quầy theo mã hoặc tên</label><input id="storeSearchT5" placeholder="VD: 2524446 hoặc tên quầy..."></div>
-        <button class="btn-clear" style="background:var(--chàm-1);color:#fff;border-color:var(--chàm-1)" onclick="window.__doSearch('storeSearchT5')">Tìm chi tiết 360°</button>
+        <div class="filter-field" style="min-width:220px"><label>Tìm quầy theo mã hoặc tên</label><input id="storeSearchT5" placeholder="VD: 2524446 hoặc tên quầy..." autocomplete="off"></div>
+        <button class="btn-clear" style="background:var(--chàm-1);color:#fff;border-color:var(--chàm-1)" onclick="window.__t5search()">Tìm</button>
       </div>
       <div class="breadcrumb" id="t5crumb"></div>
+      <div id="t5card"></div>
       <div id="t5body"></div>
     </div>
     <div class="small" style="margin-top:12px;margin-bottom:6px">Từ Tháng 11 cuộc thi ảnh chạy theo cơ chế <b>Nhiệm vụ ngày</b> (CV 464–470): mỗi ngày khách hàng hoàn thành tối đa 1 lần, tối đa 30 lần/tháng, thưởng theo từng lần (NGK 2.000đ · Cà phê 4.000đ · HPC 4.000đ · Meat 6.000đ · KH trọng điểm 2.000đ · Gia vị 4.000đ/12.000đ · Mì 4.000đ/12.000đ tùy mức kệ). Hoàn thành ≥1 lần = có ≥1 ảnh duyệt · Đã chụp = có ảnh nhưng chưa được duyệt · Chưa chụp = chưa có ảnh. <b>Số lần hoàn thành chỉ tính ảnh do RTL tự chụp (bỏ ảnh ĐDKD chụp), mỗi ngày tối đa 1 lần</b>. Đã loại các chương trình sampling. Chương trình TBTN Tủ mát Nước giải khát chỉ do ĐDKD chụp nên <b>vẫn Tracking bộ hình ĐDKD chụp nhưng không tính vào tổng suất Tbay / Hoàn thành ≥1 lần / Đã chụp / Chưa chụp</b>.</div>
     <div class="t8f-recov-banner" style="margin-top:12px;background:#fef9c3;border-color:#facc15">✅ Số bộ ảnh chụp/duyệt theo danh sách Trưng bày <b>Tháng 11</b> (9 chương trình, 6.444 suất: 4.937 suất chụp hình + chương trình TBTN Tủ mát Nước giải khát 1.507 suất chỉ ĐDKD chụp nên chỉ Tracking bộ hình ĐDKD) và cột banker/MTD/%TH/thưởng ước tính đã cập nhật đến <b>20/11/2026</b>. Điều kiện "Dnl doanh số" T11 (CV 454–463, 474): suất có trong file "DSKH import Dnl Tbay Tháng 11" (4.584 dòng / 1.685 CH), tích lũy doanh số 01–30/11, mỗi KH tối đa 1 suất — banker/thưởng: Mì 1,5tr/100k · Mì Onelook 2tr/120k · Gia vị 2tr/100k · Cà phê 1,5tr/100k · HMP (Chanté + Joins) 850k/150k · NGK (Tea365) 300k/45k · Meat 1,5tr/150k · KH trọng điểm (Gia vị) 500k/30k. Khớp 4.062 suất / 1.412 CH với DSKH Tbay chụp hình T11; 370 suất có trong import nhưng chưa có suất Tbay chụp hình. 3 chương trình Đại sứ Tết Masan (152 dòng trong file import) hiện chưa theo dõi trên Dashboard. Cuộc thi ảnh T11 tính theo Nhiệm vụ ngày (CV 464–470).</div>
     <div class="t8f-recov-banner" style="margin-top:10px;background:#f3efff;border-color:#c4b5fd;color:#4c1d95"><div style="cursor:pointer;font-weight:600;user-select:none" onclick="window.__toggleNote('note_t5dnl')"><span id="note_t5dnl_arrow">▸</span> 🏆 <b>Suất đủ điều kiện tham gia Dnl doanh số</b> — bấm để xem chi tiết &amp; đối chiếu file Trade</div><div id="note_t5dnl" style="display:none;margin-top:6px"><div class="small" id="t5dnlInfo"></div></div></div>
   `;
-  document.getElementById('storeSearchT5').addEventListener('keydown', e=>{ if(e.key==='Enter') window.__doSearch('storeSearchT5'); });
+  (function(){ const inp=document.getElementById('storeSearchT5'); if(!inp) return; inp.value = t5filters.q||''; let tm=null;
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ clearTimeout(tm); window.__t5search(); } });
+    inp.addEventListener('input', ()=>{ clearTimeout(tm); tm=setTimeout(()=>window.__t5search(), 350); }); })();
   populateT5Filters();
   renderTab5Body();
 }
@@ -3161,6 +3206,7 @@ function t5statCounts(rows){
   return c;
 }
 function renderTab5Body(){
+  t5renderCard();
   const rows = t5rowsFiltered();
   const c = t5statCounts(rows);
   const total = c.dat_chuan+c.da_chup+c.chua_chup;
@@ -3197,6 +3243,7 @@ function renderTab5Body(){
   const crumbs = [];
   if(t5filters.ct) crumbs.push(`<a onclick="window.__t5set('ct',null)">CT: ${t5ctArr().join(', ')}</a>`);
   if(t5filters.mucdk) crumbs.push(`<a onclick="window.__t5set('mucdk',null)">Mức ĐK: ${t5filters.mucdk}</a>`);
+  if(t5filters.q) crumbs.push(`<a onclick="{const i=document.getElementById('storeSearchT5');if(i)i.value='';window.__t5set('q',null)}">Tìm: ${String(t5filters.q).replace(/</g,'&lt;')}</a>`);
   if(t5filters.ss) crumbs.push(`<a onclick="window.__t5set('ss',null)">SS: ${t5filters.ss}</a>`);
   if(t5filters.ddkd) crumbs.push(`<a onclick="window.__t5set('ddkd',null)">ĐDKD: ${t5filters.ddkd}</a>`);
   document.getElementById('t5crumb').innerHTML = crumbs.length ? ('Tất cả › ' + crumbs.join(' › ')) : '';
