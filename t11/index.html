@@ -1126,6 +1126,30 @@ function chLeadTd(hide, r){
   return hide ? dd+ma+ten+vt : vt + `<td class="small">${r.ss||'—'}</td>` + dd + ma + ten;
 }
 function chTblAttr(hide){ return hide ? ' class="tbl-compact t1sum" data-stk="3"' : ' class="tbl-compact"'; }
+// v92 (23/11): Tab MBS Hội viên — dòng TỔNG của nhóm CH đang xem (theo mọi bộ lọc: SS/ĐDKD/chip/tìm kiếm), dính trên đầu bảng chi tiết
+function t1MbsTot(rows){
+  const n = rows.length; let m1=0, rr=0, m3=0, mtd=0, vc=0, th=0, nNv2=0, nMuc=0;
+  rows.forEach(r=>{ m1+=(r.m1||0); rr+=(r.rr||0); m3+=(r.m3||0); mtd+=(r.mtd||0); vc+=(r.vcap||0); th+=(r.thuong||0); if(r.nv2) nNv2++; if(r.muc>0) nMuc++; });
+  const gp = x=>{ const s=(Math.abs(x)/1e6).toFixed(1), p=s.split('.'); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1]; };
+  const g2 = x=>{ const s=(Math.abs(x)/1e6).toFixed(2), p=s.split('.'); return p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+p[1]; };
+  const MC = ['#15803d','#b45309','#a21caf'];
+  const gap = mtd - rr, gap1 = mtd - m1, pct = rr>0 ? mtd/rr*100 : null, pct1 = m1>0 ? mtd/m1*100 : null;
+  const gc = x=> x>=0 ? '#15803d' : '#b91c1c', sg = x=> (x>=0?'+':'−')+gp(x);
+  const st = 'background:#fef9c3 !important;color:#1f2937 !important;text-transform:none !important;font-size:12px !important;font-weight:700;letter-spacing:0;padding:4px 6px;border:1px solid #eab308;border-bottom:2px solid #ca8a04;line-height:1.3;white-space:nowrap;vertical-align:middle;text-align:';
+  const c = (a,x)=>`<th style="${st}${a}">${x}</th>`;
+  return c('left',`TỔNG nhóm<br><span style="font-weight:500;font-size:11px;color:#475569 !important">${fmt(n)} CH</span>`)
+    + c('left',`CT nền <b style="color:#1f2937 !important">${gp(rr)}</b>tr<br><span style="color:${gc(gap)} !important">Gap nền ${sg(gap)}tr</span>`)
+    + c('left',`<span style="color:${MC[0]} !important">${gp(m1)}</span> / <span style="color:${MC[1]} !important">${gp(rr)}</span> / <span style="color:${MC[2]} !important">${gp(m3)}</span><br><span style="font-weight:500;font-size:11px;color:${gc(gap1)} !important">Gap M1 ${sg(gap1)}tr</span>`)
+    + c('right',g2(mtd))
+    + c('right',`${pct!=null?pct.toFixed(1)+'%':'—'}<br><span style="font-weight:500;font-size:11px;color:#475569 !important">M1: ${pct1!=null?pct1.toFixed(1)+'%':'—'}</span>`)
+    + c('right',vc>0?`<span style="color:#dc2626 !important">${g2(vc)}</span>`:'—')
+    + c('center','—')
+    + c('right',g2(mtd-vc))
+    + c('left',`${fmt(nNv2)}/${fmt(n)} đủ NV2`)
+    + c('left',`${fmt(nMuc)}/${fmt(n)} đạt mức`)
+    + c('right',fmtVnd(th))
+    + '</tr><tr>';
+}
 function t1ChTable(rows, prog){
   const gift = t1IsGift(prog), baseLabel = t1BaselineLabel(prog), F = t1IsTdc(prog) ? t1F1 : fmt;
   const hideSS = !!t1state.ss && !(t1state.q && t1state.q.trim());
@@ -1149,7 +1173,7 @@ function t1ChTable(rows, prog){
     const sh = x=>x>=1e6 ? (x/1e6).toFixed(1).replace('.',',')+'tr' : Math.round(x/1000)+'k';
     const tr1 = x=>(x/1e6).toFixed(1).replace('.',','), tr2 = x=>(x/1e6).toFixed(2).replace('.',',');
     const MC = ['#15803d','#b45309','#a21caf'], MB = ['#dcfce7','#fef3c7','#fae8ff'];
-    head = `<th>ĐDKD</th><th>Tên CH</th><th title="Mức 1 (95% nền) / Mức 2 (nền) / Mức 3 (105% nền), triệu đồng. Ô tô nền = MTD tổng đã đạt mức đó">Mức 1 / 2 / 3 (tr)</th><th title="Tổng doanh số CH mua (Sales After Discount), triệu đồng">MTD T11 (tr)</th><th>%TH nền</th><th title="Doanh số vượt 115% chỉ tiêu của 13 SKU trọng yếu, triệu đồng">Vượt cap trần (tr)</th><th title="SKU trọng yếu đã vượt 115% chỉ tiêu của CH. Muốn xem số vượt từng SKU → Tab Cap Trần">Nhãn vượt cap</th><th title="MTD − vượt cap trần, triệu đồng — thưởng tính trên số này">DS tính thưởng (tr)</th><th title="✔ đã mua (Đại sứ: đủ ≥150k) · ◐ có mua nhưng chưa đủ 150k · ✗ chưa mua">${dsu?'Nhãn đã mua (≥150k/nhãn)':'Nhãn đã mua (tổng ≥500k)'}</th><th>Trạng thái</th><th>Thưởng TK</th>`;
+    head = t1MbsTot(rows) + `<th>ĐDKD</th><th>Tên CH</th><th title="Mức 1 (95% nền) / Mức 2 (nền) / Mức 3 (105% nền), triệu đồng. Ô tô nền = MTD tổng đã đạt mức đó">Mức 1 / 2 / 3 (tr)</th><th title="Tổng doanh số CH mua (Sales After Discount), triệu đồng">MTD T11 (tr)</th><th>%TH nền</th><th title="Doanh số vượt 115% chỉ tiêu của 13 SKU trọng yếu, triệu đồng">Vượt cap trần (tr)</th><th title="SKU trọng yếu đã vượt 115% chỉ tiêu của CH. Muốn xem số vượt từng SKU → Tab Cap Trần">Nhãn vượt cap</th><th title="MTD − vượt cap trần, triệu đồng — thưởng tính trên số này">DS tính thưởng (tr)</th><th title="✔ đã mua (Đại sứ: đủ ≥150k) · ◐ có mua nhưng chưa đủ 150k · ✗ chưa mua">${dsu?'Nhãn đã mua (≥150k/nhãn)':'Nhãn đã mua (tổng ≥500k)'}</th><th>Trạng thái</th><th>Thưởng TK</th>`;
     body = capped.map(r=>{
       const st = t1St(r), pctTxt = r.pct!=null ? (r.pct*100).toFixed(1)+'%' : '—';
       const M = [r.m1, r.rr, r.m3], vc = r.vcap||0, dstt = r.mtd - vc;
@@ -1174,7 +1198,7 @@ function t1ChTable(rows, prog){
       ${chLeadTd(hideSS, r)}<td>${F(base)}</td>${gm?`<td style="font-weight:700;color:#1d4ed8">${F(Math.round(base*gm))}</td>`:''}<td>${F(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${t1DnlOn(prog)?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
     }).join('') || empty.replace('colspan="11"','colspan="10"');
   }
-  return `${t1IsMbs(prog)?'<style>table[data-mbs] td.c-ten{white-space:normal;min-width:90px;max-width:130px;line-height:1.25;font-size:12px}</style>':''}<div class="tbl-scroll" style="max-height:65vh"><table${t1IsMbs(prog)?' class="tbl-compact" data-mbs="1"':chTblAttr(hideSS)}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
+  return `${t1IsMbs(prog)?'<style>table[data-mbs] td.c-ten{white-space:normal;min-width:90px;max-width:130px;line-height:1.25;font-size:12px}table[data-mbs] thead tr:nth-child(2) th{top:var(--t1tot,46px)}</style>':''}<div class="tbl-scroll" style="max-height:65vh"><table${t1IsMbs(prog)?' class="tbl-compact" data-mbs="1"':chTblAttr(hideSS)}><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>${note}`;
 }
 function t1KpiDefs(prog){
   const gift = t1IsGift(prog), bev = prog==='bev';
@@ -1922,6 +1946,7 @@ function renderTab1Body(){
     ${t1SummaryCard()}
     ${t1NoteBox(prog)}
     ${t1Banner(prog)}`;
+  try{ const tb = body.querySelector('table[data-mbs]'); if(tb){ const r1 = tb.querySelector('thead tr'); if(r1) tb.style.setProperty('--t1tot', r1.offsetHeight+'px'); } }catch(e){}   // v92: hàng tiêu đề cột dính ngay dưới dòng TỔNG
 }
 
 
