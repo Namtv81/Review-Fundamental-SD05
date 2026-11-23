@@ -1165,10 +1165,11 @@ function t1ChTable(rows, prog){
     }).join('') || empty;
   } else {
     const gm = (t1Meta(prog).kind==='growth') ? (t1Meta(prog).gate_mult||1) : 0;
-    head = `${chLeadTh(hideSS)}<th>${baseLabel}</th>${gm?`<th title="Chỉ tiêu = nền × ${Math.round(gm*100)}% (MTD đạt mức này mới đủ điều kiện thưởng)">CT nền ${Math.round(gm*100)}%</th>`:''}<th>${t1IsTdc(prog)?'MTD T11 (thùng)':'MTD T11'}</th><th${gm?' title="MTD so với nền gốc"':''}>${gm?'%TH nền':'%TH'}</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${t1DnlOn(prog)?'<th>'+t1DnlLbl(prog)+'</th>':''}`;
+    head = `${chLeadTh(hideSS)}<th>${baseLabel}</th>${gm?`<th title="Chỉ tiêu = nền × ${Math.round(gm*100)}% (MTD đạt mức này mới đủ điều kiện thưởng)">CT nền ${Math.round(gm*100)}%</th>`:''}<th>${t1IsTdc(prog)?'MTD T11 (thùng)':'MTD T11'}</th><th${gm?` title="MTD ÷ CT nền ${Math.round(gm*100)}%"`:''}>${gm?'%TH nền':'%TH'}</th><th>Trạng thái</th><th>Thưởng (đ, tham khảo)</th>${t1DnlOn(prog)?'<th>'+t1DnlLbl(prog)+'</th>':''}`;
     body = capped.map(r=>{
       const base = t1BaselineVal(r), st = t1St(r);
-      const pctTxt = r.pct!=null ? (r.pct*100).toFixed(1)+'%' : '—';
+      const pctV = (gm && base>0) ? (r.mtd||0)/(base*gm) : r.pct;   // v91 (23/11): %TH nền = MTD ÷ CT nền (nền × ngưỡng %)
+      const pctTxt = pctV!=null ? (pctV*100).toFixed(1)+'%' : '—';
       return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],[baseLabel,F(base)],['MTD T11',F(r.mtd)],['%TH',pctTxt],['Trạng thái', stLbl[st], T1_ST_COLOR[st]],['Thưởng (tham khảo)',fmtVnd(r.thuong)]].concat(t1DnlOn(prog)?[[t1DnlLbl(prog),r.dnl_da?'Đã đăng ký':'—',r.dnl_da?'xanh':'']]:[])))}>
       ${chLeadTd(hideSS, r)}<td>${F(base)}</td>${gm?`<td style="font-weight:700;color:#1d4ed8">${F(Math.round(base*gm))}</td>`:''}<td>${F(r.mtd)}</td><td>${pctTxt}</td><td>${dot(T1_ST_COLOR[st])}${stLbl[st]}</td><td>${fmtVnd(r.thuong)}</td>${t1DnlOn(prog)?`<td style="text-align:center">${r.dnl_da?'<span style="color:#16a34a;font-weight:800;font-size:15px">✔</span>':''}</td>`:''}</tr>`;
     }).join('') || empty.replace('colspan="11"','colspan="10"');
@@ -1305,7 +1306,7 @@ function t1SumCells(p, r){
   const gmS = (!gift && T1_PROGS_GROWTH.includes(p)) ? (t1Meta(p).gate_mult||1) : 1;
   const ct = gift ? r.moc : t1BaselineVal(r)*gmS;
   const mtd = gift ? r.max_don : r.mtd;
-  const pc = gift ? (r.moc>0 ? r.max_don/r.moc : null) : r.pct;
+  const pc = gift ? (r.moc>0 ? r.max_don/r.moc : null) : (gmS>1 && ct>0 ? (r.mtd||0)/ct : r.pct);
   const pTxt = pc!=null ? (pc*100).toFixed(1)+'%' : '—';
   const dat = !!r.dat_gate;
   const st = dat ? 'color:#16a34a;font-weight:700' : '';
@@ -1345,7 +1346,7 @@ function t1SummaryCard(){
       <h3 style="font-size:14px;margin:0">📋 Tổng hợp các CT gắn kết theo từng CH <span class="small" style="color:var(--sub);font-weight:400">(${fmt(arr.length)}${t1SumOnly?'/'+fmt(total):''} quầy${hideSS?' · SS: '+f.ss:''} · theo bộ lọc SS/ĐDKD/thứ viếng thăm phía trên)</span></h3>
       <div class="chips" style="margin:0">${chip(false,'Tất cả CH ('+fmt(total)+')')}${chip(true,'CH đạt ≥1 CT')}<button id="xsOpenBtn" class="chip" style="background:#15803d;color:#fff;border-color:#15803d;font-weight:700" title="Chọn CT cần in rồi tải bảng tổng hợp về Excel để in cho ĐDKD" onclick="window.__xsOpen()">📥 Tải Excel</button></div>
     </div>
-    <div class="small" style="margin-bottom:6px;color:var(--sub)">Mỗi quầy một dòng: các CT mà quầy đó thuộc phạm vi (CT = nền × ngưỡng % của CT tăng trưởng — Gia vị/Mì 120%, Café 130%, Chanté 115% — hoặc mốc cố định; MTD; %TH nền = MTD ÷ nền gốc). MBS = CT nền / MTD / %TH nền của MBS Hội viên (Đại sứ + VIP còn lại; để "—" nếu quầy không thuộc MBS). "Đạt" = số CT đã đạt gate / số CT quầy thuộc phạm vi (không tính MBS; không gồm Dnl TDC). "MTD DS gắn kết" = tổng MTD của các CT gắn kết trong bảng (không gồm MBS). Dnl Trà (Tea365) và Ngũ cốc nằm cuối bảng. Ô "không thuộc CT" = quầy không nằm trong danh sách CT đó.</div>
+    <div class="small" style="margin-bottom:6px;color:var(--sub)">Mỗi quầy một dòng: các CT mà quầy đó thuộc phạm vi (CT = nền × ngưỡng % của CT tăng trưởng — Gia vị/Mì 120%, Café 130%, Chanté 115% — hoặc mốc cố định; MTD; %TH nền = MTD ÷ CT nền, tức nền × ngưỡng %). MBS = CT nền / MTD / %TH nền của MBS Hội viên (Đại sứ + VIP còn lại; để "—" nếu quầy không thuộc MBS). "Đạt" = số CT đã đạt gate / số CT quầy thuộc phạm vi (không tính MBS; không gồm Dnl TDC). "MTD DS gắn kết" = tổng MTD của các CT gắn kết trong bảng (không gồm MBS). Dnl Trà (Tea365) và Ngũ cốc nằm cuối bảng. Ô "không thuộc CT" = quầy không nằm trong danh sách CT đó.</div>
     <div class="tbl-scroll" style="max-height:65vh"><table class="tbl-compact t1sum"${hideSS?' data-stk="4"':''}><thead><tr>${hideSS?'':'<th rowspan="2">SS</th>'}<th rowspan="2">ĐDKD</th><th rowspan="2" title="Thứ viếng thăm của CH (theo MCP)">Thứ VT</th><th rowspan="2">Mã CH</th><th rowspan="2">Tên CH</th><th colspan="3" style="text-align:center;border-left:2px solid #fff" title="MBS Hội viên (Đại sứ + VIP còn lại): chỉ tiêu nền, doanh số MTD, %TH nền">🏷️ MBS</th><th rowspan="2" title="Số CT gắn kết đã đạt / số CT quầy thuộc phạm vi (không tính MBS)">Đạt</th><th rowspan="2" title="Tổng MTD của tất cả CT gắn kết trong bảng (Gia vị + Mì + Café + Chanté + Xúc xích + Tea365 + Ngũ cốc…; không gồm MBS Hội viên và Dnl TDC)">MTD DS gắn kết</th>${grp}</tr><tr><th style="border-left:2px solid #fff">CT MBS (nền)</th><th>MTD MBS</th><th>%TH nền</th>${sub}</tr></thead><tbody>${body}</tbody></table></div>${note}
   </div>`;
 }
@@ -1572,7 +1573,7 @@ window.__xlT1 = function(btn){
   cols = [];
   if(gm) cols.push({h:t1BaselineLabel(prog), w:13, k:kk, f:r=>nn(t1BaselineVal(r))}, {h:'Chỉ tiêu ('+Math.round(gm*100)+'% nền)', w:13, k:kk, f:r=>nn(ctOf(r))});
   else cols.push({h:t1BaselineLabel(prog)+(tdc?'':''), w:13, k:kk, f:r=>nn(ctOf(r))});
-  cols.push({h:tdc?'Đã mua MTD (thùng)':'Đã mua (MTD)', w:13, k:kk, sum:true, f:r=>nn(r.mtd)}, {h:'Còn thiếu để đạt', w:13, k:kk, sum:true, f:r=>nn(Math.max(0, ctOf(r)-(r.mtd||0)))}, {h:gm?'%TH nền':'%TH', w:9, k:'pct', f:r=>r.pct!=null?r.pct:null}, {h:'Trạng thái', w:14, k:'st', f:stTxt});
+  cols.push({h:tdc?'Đã mua MTD (thùng)':'Đã mua (MTD)', w:13, k:kk, sum:true, f:r=>nn(r.mtd)}, {h:'Còn thiếu để đạt', w:13, k:kk, sum:true, f:r=>nn(Math.max(0, ctOf(r)-(r.mtd||0)))}, {h:gm?'%TH nền (MTD ÷ CT nền '+Math.round(gm*100)+'%)':'%TH', w:9, k:'pct', f:r=>{ const b=t1BaselineVal(r); return (gm && b>0) ? (r.mtd||0)/(b*gm) : (r.pct!=null?r.pct:null); }}, {h:'Trạng thái', w:14, k:'st', f:stTxt});
   if(t1DnlOn(prog)) cols.push({h:t1DnlLbl(prog), w:15, k:'st', f:r=>r.dnl_da?'Đã đăng ký':'Chưa đăng ký'});
   return __xlRun({title:'Gắn kết — '+m.label, tag:'GanKet_'+__xlSlug(m.label), info:__xlFilterText(parts.slice(1))+'. Số tham khảo theo Raw (sau chiết khấu), còn thiếu = chỉ tiêu − đã mua.', cols, rows, gap:r=>Math.max(0, ctOf(r)-(r.mtd||0)), ssOf:r=>r.ss, ddOf:r=>r.ddkd, vtOf:r=>r.vt, maOf:r=>r.ma, tenOf:r=>r.ten}, btn);
 };
@@ -1833,7 +1834,7 @@ function __xsVals(p, r){   // {ct, mtd, pc} giống t1SumCells; null nếu CH kh
   if(!r) return null;
   const gift = t1IsGift(p), gmS = (!gift && T1_PROGS_GROWTH.includes(p)) ? (t1Meta(p).gate_mult||1) : 1;
   const ct = gift ? r.moc : t1BaselineVal(r)*gmS, mtd = gift ? r.max_don : r.mtd;
-  const pc = gift ? (r.moc>0 ? r.max_don/r.moc : null) : r.pct;
+  const pc = gift ? (r.moc>0 ? r.max_don/r.moc : null) : (gmS>1 && ct>0 ? (r.mtd||0)/ct : r.pct);
   return {ct, mtd, pc};
 }
 window.__xsClose = function(){ const p = document.getElementById('xsPanel'); if(p) p.remove(); document.removeEventListener('mousedown', window.__xsOut, true); };
@@ -1880,7 +1881,7 @@ function __xsRun(sel, paper, addr, btn){
   const parts = [f.ss&&('SS: '+f.ss), f.ddkd&&('ĐDKD: '+f.ddkd), f.vt!==null&&('Viếng thăm: '+f.vt), t1SumOnly&&'Chỉ CH đạt ≥1 CT', (f.q&&f.q.trim())&&('Tìm: '+f.q.trim())];
   const gapOf = e => progs.reduce((s,p)=>{ const v = __xsVals(p, e.p[p]); return s + (v ? Math.max(0, (v.ct||0)-(v.mtd||0)) : 0); }, 0);
   return __xlRun({title:'Tổng hợp CT gắn kết theo CH', tag:'GanKet_TongHop', paper:paper, addr:addr, noteW:16,
-    info:__xlFilterText(parts)+'. Tiền: nghìn đồng. CT tăng trưởng = nền × ngưỡng (Gia vị/Mì 120%, Café 130%, Chanté 115%); %TH nền = MTD ÷ nền. Ô trống = CH không thuộc CT. Số tham khảo theo Raw.',
+    info:__xlFilterText(parts)+'. Tiền: nghìn đồng. CT tăng trưởng = nền × ngưỡng (Gia vị/Mì 120%, Café 130%, Chanté 115%); %TH nền = MTD ÷ CT (nền × ngưỡng). Ô trống = CH không thuộc CT. Số tham khảo theo Raw.',
     cols, rows, gap:gapOf, ssOf:e=>e.ss, ddOf:e=>e.ddkd, vtOf:e=>e.vt, maOf:e=>e.ma, tenOf:e=>e.ten}, btn);
 }
 
