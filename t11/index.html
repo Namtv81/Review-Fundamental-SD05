@@ -970,13 +970,17 @@ function t1DnlOn(prog){ return prog==='bev' || t1IsTdc(prog); }   // 12/11: có 
 function t1DnlLbl(prog){ return prog==='bev' ? 'ĐK Dnl đồng hồ Tea365' : 'ĐK Dnl TDC'; }
 const T1_GK_ORDER = T1_PROG_ORDER.filter(p=>p!=='mbs_ds' && p!=='mbs_vip');
 let t1Group = 'gk';   // 'gk' = tab Gắn kết RTL | 'mbs' = tab MBS Hội viên (dùng chung engine Tab 1)
-function t1IsMbs(prog){ return prog==='mbs_ds' || prog==='mbs_vip'; }
+function t1IsMbs(prog){ return prog==='mbs_ds' || prog==='mbs_vip' || prog==='mbs_all'; }
+// 27/11: tab "Tổng hội viên" = gộp Đại sứ + VIP còn lại (prog ảo 'mbs_all', không đưa vào T1_PROG_ORDER để các bảng tổng khác không đếm đôi)
+function t1MbsAllMeta(){ const a=DATA.tab1.mbs_ds, b=DATA.tab1.mbs_vip; return Object.assign({}, b, {label:'Tổng hội viên', gate_txt:'MTD ≥ 95% chỉ tiêu nền (Mức 1) + NV2 (Đại sứ: đủ 4 nhãn, mỗi nhãn ≥150k · VIP còn lại: tổng 4 nhãn ≥500k)', donvi:'Tổng KH Hội viên (Đại sứ + VIP còn lại)', quay_total:(a.quay_total||0)+(b.quay_total||0), quay_dat:(a.quay_dat||0)+(b.quay_dat||0), thuong_tong:(a.thuong_tong||0)+(b.thuong_tong||0)}); }
+// lọc thứ viếng thăm: vt có thể là null | 'Thứ n' | mảng các thứ (tick chọn nhiều thứ ở nhóm MBS)
+function t1VtOk(r, vt){ if(vt===null || vt===undefined) return true; const s=(r.vt||''); return Array.isArray(vt) ? vt.some(d=>s.includes(d)) : s.includes(vt); }
 const t1F1 = x => (+x||0).toLocaleString('vi-VN',{maximumFractionDigits:1});
 const T1_FRESH = ()=>({ss:null, ddkd:null, q:'', st:null, vt:null, flat:false, dnl:false, p70:false, grp:null, td:null});
 let t1state = Object.assign({prog:'giavi'}, T1_FRESH());
 
-function t1Meta(prog){ return T1_PROGS_GROWTH.includes(prog) ? DATA.tab1[prog] : DATA.tab1_kpiobj[prog]; }
-function t1RowsOfProg(prog){ return (T1_PROGS_GROWTH.includes(prog) ? TAB1ROWS : TAB1_KPIOBJ_ROWS).filter(r=>r.prog===prog); }
+function t1Meta(prog){ if(prog==='mbs_all') return t1MbsAllMeta(); return T1_PROGS_GROWTH.includes(prog) ? DATA.tab1[prog] : DATA.tab1_kpiobj[prog]; }
+function t1RowsOfProg(prog){ if(prog==='mbs_all') return TAB1ROWS.filter(r=>r.prog==='mbs_ds' || r.prog==='mbs_vip'); return (T1_PROGS_GROWTH.includes(prog) ? TAB1ROWS : TAB1_KPIOBJ_ROWS).filter(r=>r.prog===prog); }
 function t1IsGift(prog){ return false; }
 function t1BaselineLabel(prog){ return t1IsMbs(prog) ? 'Chỉ tiêu nền' : prog==='mi' ? 'Nền T6-7-8' : (T1_PROGS_GROWTH.includes(prog) ? 'Nền T7-8-9' : (t1IsTdc(prog) ? 'CT (mốc thùng)' : 'CT (mốc cố định)')); }
 function t1BaselineVal(r){ return r.rr!=null ? r.rr : r.moc; }
@@ -988,7 +992,7 @@ const T1_ST_LABEL_GIFT = {dat:'Đạt — được tặng', chay:'Đang chạy',
 
 function t1ProgBar(){
   return `<div class="card"><div class="filter-row">
-        ${T1_PROG_ORDER.filter(k=>(t1Group==='mbs')===t1IsMbs(k)).map(k=>`<button class="t9-cat-btn${t1state.prog===k?' active':''}" onclick="window.__t1setProg('${k}')">${T1_PROG_ICON[k]} ${t1Meta(k).label}</button>`).join('')}
+        ${T1_PROG_ORDER.filter(k=>(t1Group==='mbs')===t1IsMbs(k)).map(k=>`<button class="t9-cat-btn${t1state.prog===k?' active':''}" onclick="window.__t1setProg('${k}')">${T1_PROG_ICON[k]} ${t1Meta(k).label}</button>`).join('')}${t1Group==='mbs'?`<button class="t9-cat-btn${t1state.prog==='mbs_all'?' active':''}" onclick="window.__t1setProg('mbs_all')">🏷️ ${t1Meta('mbs_all').label}</button>`:''}
       </div></div>`;
 }
 function renderTab1(){
@@ -997,12 +1001,15 @@ function renderTab1(){
   renderTab1Body();
 }
 // v48 (10/10): đổi CT nhỏ vẫn GIỮ bộ lọc SS / ĐDKD / Tìm CH (anh yêu cầu không phải chọn lại tên)
-window.__t1setProg = function(prog){ const keep={ss:t1state.ss, ddkd:t1state.ddkd, q:t1state.q}; if(t1IsMbs(prog)) keep.grp=t1state.grp; t1state = Object.assign({prog}, T1_FRESH(), keep); renderTab1(); };
+window.__t1setProg = function(prog){ const keep={ss:t1state.ss, ddkd:t1state.ddkd, q:t1state.q}; if(t1IsMbs(prog)){ keep.grp=t1state.grp; if(t1IsMbs(t1state.prog)) keep.vt=t1state.vt; } t1state = Object.assign({prog}, T1_FRESH(), keep); renderTab1(); };
 window.__t1set = function(key, val){ t1state[key]=val; if(key==='ss') t1state.ddkd=null; renderTab1Body(); };
 window.__t1setQ = function(v){ t1state.q = v; renderTab1Body(); };
 window.__t1clear = function(){ t1state = Object.assign({prog:t1state.prog}, T1_FRESH()); renderTab1Body(); };
 window.__t1stF = function(v){ t1state.st = v; renderTab1Body(); };
-window.__t1vtF = function(v){ t1state.vt = v; renderTab1Body(); };
+window.__t1vtF = function(v){
+  if(t1Group==='mbs' && v!==null){ const cur = Array.isArray(t1state.vt) ? t1state.vt.slice() : (t1state.vt ? [t1state.vt] : []); const i = cur.indexOf(v); if(i>=0) cur.splice(i,1); else cur.push(v); t1state.vt = cur.length ? cur : null; }
+  else t1state.vt = v;
+  renderTab1Body(); };
 window.__t1grpF = function(v){ t1state.grp = v; renderTab1Body(); };
 window.__t1tdF = function(v){ t1state.td = v; renderTab1Body(); };
 // 13/11: tiến độ CH MBS = MTD ÷ chỉ tiêu nền so với nhịp thời gian: rớt (< nhịp) · đạt (≥ nhịp, < 100% nền) · vượt (≥ 100% nền)
@@ -1030,7 +1037,7 @@ function t1ScopeRows(){
 }
 function t1ApplyChips(rows){
   const f = t1state;
-  return rows.filter(r=> (!f.st || t1St(r)===f.st) && (f.vt===null || (r.vt||'').includes(f.vt)) && (!f.dnl || r.dnl_da) && (!f.p70 || t1P70(r)) && (!f.grp || !t1IsMbs(f.prog) || t1GrpOk(r, f.grp)) && (!f.td || !t1IsMbs(f.prog) || t1Td(r)===f.td));
+  return rows.filter(r=> (!f.st || t1St(r)===f.st) && t1VtOk(r, f.vt) && (!f.dnl || r.dnl_da) && (!f.p70 || t1P70(r)) && (!f.grp || !t1IsMbs(f.prog) || t1GrpOk(r, f.grp)) && (!f.td || !t1IsMbs(f.prog) || t1Td(r)===f.td));
 }
 function t1P70(r){ const m = r.moc || 1700000; return r.mtd >= 0.5*m && !r.dnl_da; }  // 28/10: CH mua ≥50% mốc mà CHƯA đăng ký Dnl đồng hồ Tea365 (trước đó 70%)
 function t1FilteredRows(){ return t1ApplyChips(t1ScopeRows()); }
@@ -1048,6 +1055,7 @@ function t1NoteText(prog){
     tet_oh: `<b>Dnl Tết Masan — Kệ OMC House (CV 459)</b>: như trên, nhóm Kệ OMC House. Đạt ≥ 3.500.000đ: tặng 300.000đ (30.000.000 điểm), tối đa 1 suất.`,
     tet_td: `<b>Dnl Tết Masan — Trọng điểm HCM, DON, MKD (CV 463)</b>: như trên, nhóm Trọng điểm. Đạt ≥ 4.000.000đ: tặng 300.000đ (30.000.000 điểm), tối đa 1 suất.`,
     tdc2: `<b>Dnl TDC — nước giải khát thường (CV 453)</b>: nhóm KH L3 "Trạm dừng chân" thuộc các NPP trong danh sách CV. Tính theo THÙNG các nhãn WU247 Amazon, Búp Non, Lemona, Compact, Vivant. Đạt ≥ 10 thùng: tặng 10.000đ/thùng (không giới hạn suất).`,
+    mbs_all: `<b>Tổng hội viên</b>: gộp 2 nhóm <b>Đại sứ</b> + <b>VIP còn lại</b> (cùng chỉ tiêu nền, Mức 1/2/3 = 95%/100%/105% nền, thưởng 1,2%/1,5%/2,0%, cap 115% chỉ tiêu SKU trọng yếu). Khác nhau ở NV2: Đại sứ mua ĐỦ 4 nhãn trọng điểm, mỗi nhãn ≥150k; VIP còn lại cần tổng 4 nhãn ≥500k (xem cột "Nhóm" cạnh mã CH). Cột Viếng thăm có thể tick chọn NHIỀU thứ cùng lúc để xem / in danh sách (nút Tải Excel xuất đúng các CH đang lọc). Chi tiết từng nhóm xem tab Đại sứ / VIP còn lại.`,
     mbs_ds: `<b>MBS Hội viên — KH VIP Đại sứ (1.213 KH)</b>: phạm vi = KH trong file "Chỉ tiêu doanh số KH phủ dày T11" (Power BI). Chỉ tiêu nền = cột "Chỉ tiêu nền"; Mức 1 / 2 / 3 = 95% / 100% / 105% nền. MTD = doanh số SAU chiết khấu mọi ngành (Total Masan, khớp cột "Doanh số thực hiện" của file; chưa trừ đơn Canceled / Pending nên 1 số ít KH có thể lệch nhẹ). NV1: MTD ≥ Mức 1. NV2: mua ĐỦ 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté), mỗi nhãn ≥ 150.000đ — cột "4 nhãn ≥150k" = số nhãn đã đủ. Thưởng 1,2% / 1,5% / 2,0% theo Mức 1 / 2 / 3, tính trên DS tính thưởng = MTD − phần vượt cap 115% chỉ tiêu từng SKU trọng yếu của chính KH (13 SKU, file "Cap trần by STD by Outlet"; theo CV 483: SKU không có chỉ tiêu thì cap = 0 → doanh số SKU đó KHÔNG được tính thưởng); các SKU còn lại tính theo doanh số thực mua. Mức đạt / %TH nền so với MTD TỔNG (chưa trừ cap). Cột "DS vượt cap trần" là phần bị trừ khi tính thưởng; chi tiết từng SKU xem Tab <b>🧢 Cap Trần</b>. 72 KH trong DSKH Phủ dày chưa có chỉ tiêu nền nên không đưa vào.`,
     mbs_vip: `<b>MBS Hội viên — KH VIP còn lại (4.073 KH)</b>: như Đại sứ về chỉ tiêu nền, Mức 1 / 2 / 3 (95% / 100% / 105%) và thưởng 1,2% / 1,5% / 2,0%. Khác ở NV2: tổng doanh số 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté) phải ≥ 500.000đ (không bắt buộc đủ từng nhãn). MTD = doanh số SAU chiết khấu mọi ngành (tổng, dùng so Mức 1/2/3); thưởng tính trên DS tính thưởng = MTD − phần vượt cap 115% chỉ tiêu từng SKU trọng yếu (cột "DS vượt cap trần"; chi tiết ở Tab 🧢 Cap Trần).`,
     tdc3: `<b>Dnl TDC — WU247 cà phê / Faith / Vĩnh Hảo (CV 453)</b>: nhóm KH L3 "Trạm dừng chân" thuộc các NPP trong danh sách CV. Tính theo THÙNG các nhãn WU247 vị cà phê, Faith, Vĩnh Hảo. Đạt ≥ 20 thùng: tặng 6.000đ/thùng (không giới hạn suất).`,
@@ -1172,15 +1180,16 @@ function t1ChTable(rows, prog){
     }).join('') || empty;
   } else if(t1IsMbs(prog)){
     const dsu = prog==='mbs_ds';
-    const BN = ['Nam Ngư','Chinsu','Kokomi','Chanté'], thr = dsu ? 150000 : 1;
+    const BN = ['Nam Ngư','Chinsu','Kokomi','Chanté'], ALLM = (prog==='mbs_all'), dsuOf = r=> ALLM ? r.prog==='mbs_ds' : dsu;
     const sh = x=>x>=1e6 ? (x/1e6).toFixed(1).replace('.',',')+'tr' : Math.round(x/1000)+'k';
     const tr1 = x=>(x/1e6).toFixed(1).replace('.',','), tr2 = x=>(x/1e6).toFixed(2).replace('.',',');
     const MC = ['#15803d','#b45309','#a21caf'], MB = ['#dcfce7','#fef3c7','#fae8ff'];
-    head = t1MbsTot(rows) + `<th>ĐDKD</th><th>Tên CH</th><th title="Mức 1 (95% nền) / Mức 2 (nền) / Mức 3 (105% nền), triệu đồng. Ô tô nền = MTD tổng đã đạt mức đó">Mức 1 / 2 / 3 (tr)</th><th title="Tổng doanh số CH mua (Sales After Discount), triệu đồng">MTD T11 (tr)</th><th>%TH nền</th><th title="Doanh số vượt 115% chỉ tiêu của 13 SKU trọng yếu, triệu đồng">Vượt cap trần (tr)</th><th title="SKU trọng yếu đã vượt 115% chỉ tiêu của CH. Muốn xem số vượt từng SKU → Tab Cap Trần">Nhãn vượt cap</th><th title="MTD − vượt cap trần, triệu đồng — thưởng tính trên số này">DS tính thưởng (tr)</th><th title="✔ đã mua (Đại sứ: đủ ≥150k) · ◐ có mua nhưng chưa đủ 150k · ✗ chưa mua">${dsu?'Nhãn đã mua (≥150k/nhãn)':'Nhãn đã mua (tổng ≥500k)'}</th><th>Trạng thái</th><th>Thưởng TK</th>`;
+    head = t1MbsTot(rows) + `<th>ĐDKD</th><th>Tên CH</th><th title="Mức 1 (95% nền) / Mức 2 (nền) / Mức 3 (105% nền), triệu đồng. Ô tô nền = MTD tổng đã đạt mức đó">Mức 1 / 2 / 3 (tr)</th><th title="Tổng doanh số CH mua (Sales After Discount), triệu đồng">MTD T11 (tr)</th><th>%TH nền</th><th title="Doanh số vượt 115% chỉ tiêu của 13 SKU trọng yếu, triệu đồng">Vượt cap trần (tr)</th><th title="SKU trọng yếu đã vượt 115% chỉ tiêu của CH. Muốn xem số vượt từng SKU → Tab Cap Trần">Nhãn vượt cap</th><th title="MTD − vượt cap trần, triệu đồng — thưởng tính trên số này">DS tính thưởng (tr)</th><th title="✔ đã mua (Đại sứ: đủ ≥150k) · ◐ có mua nhưng chưa đủ 150k · ✗ chưa mua">${ALLM?'Nhãn đã mua (ĐS: mỗi nhãn ≥150k · VIP: tổng ≥500k)':(dsu?'Nhãn đã mua (≥150k/nhãn)':'Nhãn đã mua (tổng ≥500k)')}</th><th>Trạng thái</th><th>Thưởng TK</th>`;
     body = capped.map(r=>{
       const st = t1St(r), pctTxt = r.pct!=null ? (r.pct*100).toFixed(1)+'%' : '—';
       const M = [r.m1, r.rr, r.m3], vc = r.vcap||0, dstt = r.mtd - vc;
-      const n4txt = dsu ? (r.n4+'/4') : fmt(r.ds4);
+      const dsuR = dsuOf(r), thr = dsuR ? 150000 : 1;
+      const n4txt = dsuR ? (r.n4+'/4') : fmt(r.ds4);
       const nvOk = r.nv2 ? 'xanh' : 'do';
       const mucTxt = r.muc>0 ? ('M'+r.muc+(r.nv2?'':' (thiếu NV2)')) : '—';
       const B = r.b4||[0,0,0,0];
@@ -1188,7 +1197,7 @@ function t1ChTable(rows, prog){
       const mc = M.map((x,i)=>`<span style="color:${MC[i]};font-weight:700;${r.mtd>=x?`background:${MB[i]};border-radius:4px;padding:0 3px`:''}">${tr1(x)}</span>`).join(' / ');
       const cb = i=> B[i]>=thr ? `<span style="color:#15803d">✔ ${BN[i]} <b>${sh(B[i])}</b></span>` : (B[i]>0 ? `<span style="color:#b45309">◐ ${BN[i]} <b>${sh(B[i])}</b></span>` : `<span style="color:#b91c1c">✗ ${BN[i]}</span>`);
       return `<tr${tipAttr(gtip(r.ten||'(không tên)', r.ma, [['SS',r.ss||'—'],['ĐDKD',r.ddkd||'—'],['Viếng thăm',r.vt||'—'],['Mức 1 (95%)',fmt(M[0])],['Mức 2 (nền)',fmt(M[1])],['Mức 3 (105%)',fmt(M[2])],['MTD T11 (tổng)',fmt(Math.round(r.mtd))],['Vượt cap 115% SKU',fmt(Math.round(vc))],['DS tính thưởng',fmt(Math.round(dstt))],['%TH nền',pctTxt],['Nam Ngư',fmt(B[0])],['Chinsu',fmt(B[1])],['Kokomi',fmt(B[2])],['Chanté',fmt(B[3])],['Điều kiện 4 nhãn', r.nv2?'Đạt':'Chưa đạt', nvOk],['Mức đạt',mucTxt],['Trạng thái', stLbl[st], T1_ST_COLOR[st]],['Thưởng (tham khảo)',fmtVnd(r.thuong)]]))}>
-      <td class="small c-dd" style="line-height:1.25">${r.ddkd||'—'}${hideSS?'':'<br><span style="color:#9ca3af;font-size:10.5px">'+(r.ss||'')+'</span>'}</td><td class="c-ten" style="line-height:1.25">${r.ten||'—'}<br><span style="color:#9ca3af;font-size:10.5px">${r.ma} · ${vt}</span></td><td style="white-space:nowrap;font-size:12px">${mc}</td><td>${tr2(r.mtd)}</td><td>${pctTxt}</td><td>${vc>0?'<span style="color:#dc2626;font-weight:700">'+tr2(vc)+'</span>':'—'}</td><td style="text-align:left;line-height:1.25;font-size:11px;color:#b91c1c;white-space:nowrap">${(()=>{const v=capVuotList(r.ma);return v.length?v.join('<br>'):'—';})()}</td><td>${tr2(dstt)}</td><td style="padding:3px 6px"><div style="font-weight:800;margin-bottom:1px;white-space:nowrap">${n4txt}${r.nv2?' <span style="color:#16a34a">✔ đủ NV2</span>':''}</div><div style="display:grid;grid-template-columns:auto auto;gap:1px 10px;font-size:11px;white-space:nowrap;text-align:left">${cb(0)}${cb(1)}${cb(2)}${cb(3)}</div></td><td style="white-space:nowrap;line-height:1.25">${dot(T1_ST_COLOR[st])}${stLbl[st]}${r.muc>0?'<br><b style="font-size:11px">'+mucTxt+'</b>':''}</td><td>${fmtVnd(r.thuong)}</td></tr>`;
+      <td class="small c-dd" style="line-height:1.25">${r.ddkd||'—'}${hideSS?'':'<br><span style="color:#9ca3af;font-size:10.5px">'+(r.ss||'')+'</span>'}</td><td class="c-ten" style="line-height:1.25">${r.ten||'—'}<br><span style="color:#9ca3af;font-size:10.5px">${r.ma} · ${vt}</span>${ALLM?' <b style="font-size:10.5px;color:'+(dsuR?'#4338ca':'#0e7490')+'">'+(dsuR?'Đại sứ':'VIP còn lại')+'</b>':''}</td><td style="white-space:nowrap;font-size:12px">${mc}</td><td>${tr2(r.mtd)}</td><td>${pctTxt}</td><td>${vc>0?'<span style="color:#dc2626;font-weight:700">'+tr2(vc)+'</span>':'—'}</td><td style="text-align:left;line-height:1.25;font-size:11px;color:#b91c1c;white-space:nowrap">${(()=>{const v=capVuotList(r.ma);return v.length?v.join('<br>'):'—';})()}</td><td>${tr2(dstt)}</td><td style="padding:3px 6px"><div style="font-weight:800;margin-bottom:1px;white-space:nowrap">${n4txt}${r.nv2?' <span style="color:#16a34a">✔ đủ NV2</span>':''}</div><div style="display:grid;grid-template-columns:auto auto;gap:1px 10px;font-size:11px;white-space:nowrap;text-align:left">${cb(0)}${cb(1)}${cb(2)}${cb(3)}</div></td><td style="white-space:nowrap;line-height:1.25">${dot(T1_ST_COLOR[st])}${stLbl[st]}${r.muc>0?'<br><b style="font-size:11px">'+mucTxt+'</b>':''}</td><td>${fmtVnd(r.thuong)}</td></tr>`;
     }).join('') || empty;
   } else {
     const gm = (t1Meta(prog).kind==='growth') ? (t1Meta(prog).gate_mult||1) : 0;
@@ -1216,7 +1225,7 @@ function t1KpiDefs(prog){
 function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
   const gift = t1IsGift(prog), MBSA = t1IsMbs(prog);
   const MB4O = [1,3,0,2], MB4N = ['Chinsu','Chanté','Nam Ngư','Kokomi'];
-  const NVT = prog==='mbs_ds' ? 'NV2: mua đủ 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté), mỗi nhãn ≥150k' : 'NV2: có ≥500k từ 4 nhãn trọng điểm';
+  const NVT = prog==='mbs_all' ? 'NV2: Đại sứ mua đủ 4 nhãn trọng điểm (mỗi nhãn ≥150k); VIP còn lại có ≥500k từ 4 nhãn trọng điểm' : prog==='mbs_ds' ? 'NV2: mua đủ 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté), mỗi nhãn ≥150k' : 'NV2: có ≥500k từ 4 nhãn trọng điểm';
   if(key==='ss' && topfOn('t1')){
     const lastThF = gift ? 'Quà (chai Nhị Ca)' : 'Thưởng ước tính', midThF = gift ? 'Đã mua Nhất Ca' : 'Đã phát sinh DS', bev = prog==='bev';
     const defs = t1KpiDefs(prog), sel = topfKpiSel('t1', defs);
@@ -1281,7 +1290,8 @@ function t1ChipBars(scope, prog){
   };
   const vtChip = (val,label)=>{
     const cnt = val===null ? scope.length : scope.filter(r=>(r.vt||'').includes(val)).length;
-    return `<button class="chip${f.vt===val?' active':''}" onclick="window.__t1vtF(${val===null?'null':`'${val}'`})">${label} (${fmt(cnt)})</button>`;
+    const on = val===null ? f.vt===null : (Array.isArray(f.vt) ? f.vt.includes(val) : f.vt===val), mb = (t1Group==='mbs');
+    return `<button class="chip${on?' active':''}" onclick="window.__t1vtF(${val===null?'null':`'${val}'`})">${(mb && val!==null)?(on?'☑ ':'☐ '):''}${label} (${fmt(cnt)})</button>`;
   };
   const stList = gift ? ['dat','chua'] : ['dat','chay','chua'];
   const dnlN = scope.filter(r=>r.dnl_da).length;
@@ -1301,7 +1311,7 @@ function t1ChipBars(scope, prog){
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
-      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>
+      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>${t1Group==='mbs'?'<span class="small" style="color:var(--sub)">☑ tick chọn nhiều thứ để xem / in</span>':''}
     </div>${t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t10','t50','t200'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t10'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 10tr đến dưới 50tr':g==='t50'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 50tr đến dưới 200tr':g==='t200'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 200tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:''}`;
 }
 // ===== v48 (10/10): BẢNG TỔNG HỢP MỌI CT GẮN KẾT THEO TỪNG CH (cuối Tab) =====
@@ -1351,7 +1361,7 @@ function t1SummaryCard(){
   const searching = !!(f.q && f.q.trim());
   if(searching){ const q = f.q.trim().toLowerCase(); arr = arr.filter(e=>String(e.ma).includes(q) || (e.ten||'').toLowerCase().includes(q)); }
   else { if(f.ss) arr = arr.filter(e=>e.ss===f.ss); if(f.ddkd) arr = arr.filter(e=>e.ddkd===f.ddkd); }
-  if(f.vt!==null) arr = arr.filter(e=>(e.vt||'').includes(f.vt));   // v49: chọn thứ viếng thăm ở trên thì bảng tổng hợp chạy theo
+  if(f.vt!==null) arr = arr.filter(e=>t1VtOk(e, f.vt));   // v49: chọn thứ viếng thăm ở trên thì bảng tổng hợp chạy theo
   const total = arr.length;
   if(t1SumOnly) arr = arr.filter(e=>e.nDat>0);
   arr = arr.slice().sort((a,b)=> (b.nDat-a.nDat) || (b.thuong-a.thuong) || String(a.ss).localeCompare(String(b.ss),'vi') || String(a.ddkd).localeCompare(String(b.ddkd),'vi'));
@@ -1580,19 +1590,20 @@ const __xlN = v => (v==null||isNaN(v)) ? null : Math.round(v);
 // ---- Tab Gắn kết RTL + MBS Hội viên (chung engine t1) ----
 window.__xlT1 = function(btn){
   const f = t1state, prog = f.prog, m = t1Meta(prog), rows = t1FilteredRows();
-  const parts = [m.label, f.ss&&('SS: '+f.ss), f.ddkd&&('ĐDKD: '+f.ddkd), (f.q&&f.q.trim())&&('Tìm: '+f.q.trim()), f.st&&('Trạng thái: '+T1_ST_LABEL[f.st]), f.vt!==null&&('Viếng thăm: '+f.vt), (f.grp&&t1IsMbs(prog))&&('Nhóm: '+T1_GRP_LABEL[f.grp]), (f.td&&t1IsMbs(prog))&&('Tiến độ: '+T1_TD_LABEL[f.td]), f.dnl&&('Đã đăng ký Dnl'), f.p70&&('Mua ≥50% mốc, chưa đăng ký Dnl')];
+  const parts = [m.label, f.ss&&('SS: '+f.ss), f.ddkd&&('ĐDKD: '+f.ddkd), (f.q&&f.q.trim())&&('Tìm: '+f.q.trim()), f.st&&('Trạng thái: '+T1_ST_LABEL[f.st]), f.vt!==null&&('Viếng thăm: '+[].concat(f.vt).join(', ')), (f.grp&&t1IsMbs(prog))&&('Nhóm: '+T1_GRP_LABEL[f.grp]), (f.td&&t1IsMbs(prog))&&('Tiến độ: '+T1_TD_LABEL[f.td]), f.dnl&&('Đã đăng ký Dnl'), f.p70&&('Mua ≥50% mốc, chưa đăng ký Dnl')];
   let cols;
   const stTxt = r => T1_ST_LABEL[t1St(r)];
   if(t1IsMbs(prog)){
-    const dsu = prog==='mbs_ds', BN = ['Nam Ngư','Chinsu','Kokomi','Chanté'];
+    const dsu = prog==='mbs_ds', dsuOf = r=> prog==='mbs_all' ? r.prog==='mbs_ds' : dsu, BN = ['Nam Ngư','Chinsu','Kokomi','Chanté'];
     cols = [
+      ...(prog==='mbs_all' ? [{h:'Nhóm HV', w:12, k:'txt', f:r=>r.prog==='mbs_ds'?'Đại sứ':'VIP còn lại'}] : []),
       {h:'Mức 1 (95% nền)', w:13, k:'int', f:r=>__xlN(r.m1)}, {h:'Mức 2 (nền)', w:13, k:'int', f:r=>__xlN(r.rr)}, {h:'Mức 3 (105% nền)', w:13, k:'int', f:r=>__xlN(r.m3)},
       {h:'Đã mua (MTD)', w:13, k:'int', sum:true, f:r=>__xlN(r.mtd)}, {h:'Còn thiếu để đạt Mức 1', w:14, k:'int', sum:true, f:r=>__xlN(Math.max(0,(r.m1||0)-(r.mtd||0)))},
       {h:'%TH nền', w:9, k:'pct', f:r=>r.pct!=null?r.pct:null}, {h:'Tiến độ', w:12, k:'st', f:r=>T1_TD_LABEL[t1Td(r)]},
-      {h:dsu?'4 nhãn (mỗi nhãn ≥150k)':'4 nhãn trọng điểm (tổng ≥500k)', w:26, k:'txt', f:r=>{ const b=r.b4||[0,0,0,0]; if(dsu){ const miss=BN.filter((n,i)=>b[i]<150000); return miss.length?('Thiếu: '+miss.join(', ')):'Đủ 4 nhãn'; } return (r.ds4||0)>=500000?'Đủ (≥500k)':('Thiếu '+(500000-(r.ds4||0)).toLocaleString('vi-VN')+'đ'); }},
+      {h:prog==='mbs_all'?'4 nhãn trọng điểm (ĐS: mỗi nhãn ≥150k · VIP: tổng ≥500k)':(dsu?'4 nhãn (mỗi nhãn ≥150k)':'4 nhãn trọng điểm (tổng ≥500k)'), w:28, k:'txt', f:r=>{ const b=r.b4||[0,0,0,0]; if(dsuOf(r)){ const miss=BN.filter((n,i)=>b[i]<150000); return miss.length?('Thiếu: '+miss.join(', ')):'Đủ 4 nhãn'; } return (r.ds4||0)>=500000?'Đủ (≥500k)':('Thiếu '+(500000-(r.ds4||0)).toLocaleString('vi-VN')+'đ'); }},
       {h:'Trạng thái', w:13, k:'st', f:stTxt}
     ];
-    return __xlRun({title:'MBS Hội viên — '+(dsu?'Đại sứ':'VIP còn lại'), tag:'MBS_'+(dsu?'Dai_su':'VIP_con_lai'), info:__xlFilterText(parts.slice(1))+'. Mức đạt: Mức 1/2/3 = 95/100/105% chỉ tiêu nền; thưởng cần đạt ≥ Mức 1 và NV2 (4 nhãn trọng điểm). Số tham khảo theo Raw.', cols, rows, gap:r=>Math.max(0,(r.m1||0)-(r.mtd||0)), ssOf:r=>r.ss, ddOf:r=>r.ddkd, vtOf:r=>r.vt, maOf:r=>r.ma, tenOf:r=>r.ten}, btn);
+    return __xlRun({title:'MBS Hội viên — '+(prog==='mbs_all'?'Tổng hội viên':(dsu?'Đại sứ':'VIP còn lại')), tag:'MBS_'+(prog==='mbs_all'?'Tong_hoi_vien':(dsu?'Dai_su':'VIP_con_lai')), info:__xlFilterText(parts.slice(1))+'. Mức đạt: Mức 1/2/3 = 95/100/105% chỉ tiêu nền; thưởng cần đạt ≥ Mức 1 và NV2 (4 nhãn trọng điểm). Số tham khảo theo Raw.', cols, rows, gap:r=>Math.max(0,(r.m1||0)-(r.mtd||0)), ssOf:r=>r.ss, ddOf:r=>r.ddkd, vtOf:r=>r.vt, maOf:r=>r.ma, tenOf:r=>r.ten}, btn);
   }
   const growth = T1_PROGS_GROWTH.includes(prog), gm = (growth && m.kind==='growth') ? (m.gate_mult||1) : 0, tdc = t1IsTdc(prog);
   const kk = tdc ? 'd1' : 'int', nn = v => tdc ? (v==null?null:Math.round(v*10)/10) : __xlN(v);
@@ -1853,7 +1864,7 @@ function __xsRows(){
   let arr = t1SumData(); const f = t1state, searching = !!(f.q && f.q.trim());
   if(searching){ const q = f.q.trim().toLowerCase(); arr = arr.filter(e=>String(e.ma).includes(q) || (e.ten||'').toLowerCase().includes(q)); }
   else { if(f.ss) arr = arr.filter(e=>e.ss===f.ss); if(f.ddkd) arr = arr.filter(e=>e.ddkd===f.ddkd); }
-  if(f.vt!==null) arr = arr.filter(e=>(e.vt||'').includes(f.vt));
+  if(f.vt!==null) arr = arr.filter(e=>t1VtOk(e, f.vt));
   if(t1SumOnly) arr = arr.filter(e=>e.nDat>0);
   return arr;
 }
@@ -1923,7 +1934,7 @@ function renderTab1Body(){
   if(f.ss) crumbs.push(`<a onclick="window.__t1set('ss',null)">SS: ${f.ss}</a>`);
   if(f.ddkd) crumbs.push(`<a onclick="window.__t1set('ddkd',null)">ĐDKD: ${f.ddkd}</a>`);
   if(f.st) crumbs.push(`<a onclick="window.__t1stF(null)">Trạng thái: ${(t1IsGift(prog)?T1_ST_LABEL_GIFT:T1_ST_LABEL)[f.st]}</a>`);
-  if(f.vt!==null) crumbs.push(`<a onclick="window.__t1vtF(null)">Viếng thăm: ${f.vt}</a>`);
+  if(f.vt!==null) crumbs.push(`<a onclick="window.__t1vtF(null)">Viếng thăm: ${[].concat(f.vt).join(', ')}</a>`);
   if(f.grp && t1IsMbs(prog)) crumbs.push(`<a onclick="window.__t1grpF(null)">Nhóm CH: ${T1_GRP_LABEL[f.grp]}</a>`);
   if(f.p70) crumbs.push(`<a onclick="window.__t1p70F(false)">Mua ≥50% mốc 1tr7, chưa ĐK Dnl</a>`);
   if(f.td && t1IsMbs(prog)) crumbs.push(`<a onclick="window.__t1tdF(null)">Tiến độ: ${T1_TD_LABEL[f.td]}</a>`);
