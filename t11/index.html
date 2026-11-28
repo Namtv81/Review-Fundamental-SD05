@@ -1299,7 +1299,7 @@ function t1ChipBars(scope, prog, flatBtn){
   const dnlChipTdc = `<button class="chip${f.dnl?' active':''}" title="CH đã được duyệt đăng ký chương trình này trên Tbay (file DS CH tham gia CT)" onclick="window.__t1dnlF(${f.dnl?'false':'true'})">🚚 Đã đăng ký Dnl TDC (${fmt(dnlN)})</button>`;
   const tdCnt = k=>scope.filter(r=>t1Td(r)===k).length;
   const tdChip = (k,lbl,tip)=>`<button class="chip${f.td===k?' active':''}" title="${tip}" onclick="window.__t1tdF(${f.td===k?'null':`'${k}'`})">${lbl} (${fmt(tdCnt(k))})</button>`;
-  const tdChips = `<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Tiến độ (TH ÷ CT nền):</span>${tdChip('rot','🔻 Rớt tiến độ','Thực hiện/chỉ tiêu nền dưới nhịp thời gian ('+DATA.meta.nhip+'%)')}${tdChip('dat','✅ Đạt tiến độ','Từ nhịp thời gian ('+DATA.meta.nhip+'%) đến dưới 100% chỉ tiêu nền')}${tdChip('vuot','🚀 Vượt tiến độ','Đã đạt từ 100% chỉ tiêu nền trở lên')}</div>`;
+  const tdChips = `<div class="chips" style="margin:0 0 0 12px"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Tiến độ (TH ÷ CT nền):</span>${tdChip('rot','🔻 Rớt tiến độ','Thực hiện/chỉ tiêu nền dưới nhịp thời gian ('+DATA.meta.nhip+'%)')}${tdChip('dat','✅ Đạt tiến độ','Từ nhịp thời gian ('+DATA.meta.nhip+'%) đến dưới 100% chỉ tiêu nền')}${tdChip('vuot','🚀 Vượt tiến độ','Đã đạt từ 100% chỉ tiêu nền trở lên')}</div>`;
   const p70N = scope.filter(t1P70).length;
   const p70Chip = `<button class="chip${f.p70?' active':''}" title="CH có MTD Tea365 ≥ 50% mốc 1.700.000đ (≥ 850.000đ, gồm cả CH đã đạt mốc) mà CHƯA đăng ký Dnl đồng hồ Tea365" onclick="window.__t1p70F(${f.p70?'false':'true'})">📈 Mua ≥50% mốc 1tr7 · chưa ĐK Dnl (${fmt(p70N)})</button>`;
   const mbsOrder = (t1Group==='mbs' && t1IsMbs(prog));
@@ -1312,10 +1312,10 @@ function t1ChipBars(scope, prog, flatBtn){
     </div>`;
   const rowVt = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
-      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>${t1Group==='mbs'?'<span class="small" style="color:var(--sub)" title="Tick chọn nhiều thứ để xem / in">☑ tick nhiều thứ</span>':''}${(mbsOrder && flatBtn)?`<span style="margin-left:auto">${flatBtn}</span>`:''}
+      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>${t1Group==='mbs'?'<span class="small" style="color:var(--sub)" title="Tick chọn nhiều thứ để xem / in">☑ tick nhiều thứ</span>':''}${(mbsOrder && flatBtn)?`<span>${flatBtn}</span>`:''}
     </div>`;
   const rowGrp = t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t10','t50','t200'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t10'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 10tr đến dưới 50tr':g==='t50'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 50tr đến dưới 200tr':g==='t200'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 200tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:'';
-  return mbsOrder ? (rowVt + rowGrp + rowSt) : (rowSt + rowVt + rowGrp);
+  return mbsOrder ? (`<style>.t1mb .chip{font-size:11.5px!important;padding:4px 9px!important;white-space:nowrap}.t1mb .btn-clear{font-size:11.5px;padding:4px 9px;white-space:nowrap}.t1mb .small{font-size:11.5px}</style><div class="t1mb">` + rowVt + rowGrp + rowSt + `</div>`) : (rowSt + rowVt + rowGrp);
 }
 // ===== v48 (10/10): BẢNG TỔNG HỢP MỌI CT GẮN KẾT THEO TỪNG CH (cuối Tab) =====
 let T1SUM_CACHE = null;
@@ -1960,7 +1960,7 @@ function renderTab1Body(){
   body.innerHTML = `${t1KpiRow(rows, prog)}
     ${t1FilterBar(prog)}
     ${t1ProgBar()}
-    <div class="card">${crumbHtml}${t1ChipBars(scope, prog, (!showCh ? `<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem DS CH (${fmt(rows.length)})</button>` : ''))}${inner}</div>
+    <div class="card">${crumbHtml}${t1ChipBars(scope, prog, (!showCh ? `<button class="btn-clear" onclick="window.__t1flat(true)" title="Xem thẳng danh sách CH">📋 DS CH (${fmt(rows.length)})</button>` : ''))}${inner}</div>
     ${t1CafeCtCard(rows, prog)}
     ${t1SummaryCard()}
     ${t1NoteBox(prog)}
