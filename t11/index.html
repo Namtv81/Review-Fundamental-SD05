@@ -1226,7 +1226,7 @@ function t1AggTable(rows, key, prog, firstTh, firstTd, clickKey){
   const gift = t1IsGift(prog), MBSA = t1IsMbs(prog);
   const MB4O = [1,3,0,2], MB4N = ['Chinsu','Chanté','Nam Ngư','Kokomi'];
   const NVT = prog==='mbs_all' ? 'NV2: Đại sứ mua đủ 4 nhãn trọng điểm (mỗi nhãn ≥150k); VIP còn lại có ≥500k từ 4 nhãn trọng điểm' : prog==='mbs_ds' ? 'NV2: mua đủ 4 nhãn trọng điểm (Nam Ngư, Chinsu, Kokomi, Chanté), mỗi nhãn ≥150k' : 'NV2: có ≥500k từ 4 nhãn trọng điểm';
-  if(key==='ss' && topfOn('t1')){
+  if(key==='ss' && topfOn('t1') && t1Group!=='mbs'){
     const lastThF = gift ? 'Quà (chai Nhị Ca)' : 'Thưởng ước tính', midThF = gift ? 'Đã mua Nhất Ca' : 'Đã phát sinh DS', bev = prog==='bev';
     const defs = t1KpiDefs(prog), sel = topfKpiSel('t1', defs);
     const TH = ['Tổng quầy', midThF, '%'+(gift?'đã mua':'phát sinh'), 'Số đạt', '%đạt', lastThF, gift?'%quầy có quà':'Thưởng BQ/quầy', 'ĐK Dnl đồng hồ Tea365', '%ĐK Dnl', 'Số CH đạt NV1', 'Số CH đạt NV2', 'Số CH đạt cả 2 NV'].concat(MB4N);
@@ -1282,7 +1282,7 @@ function t1FilterBar(prog){
       <div class="filter-field" style="min-width:260px"><label>Tìm CH (mã hoặc tên)</label><input type="text" value="${(f.q||'').replace(/"/g,'&quot;')}" placeholder="Nhập mã CH hoặc tên CH, Enter để tìm..." onchange="window.__t1setQ(this.value)"></div>
     </div></div>`;
 }
-function t1ChipBars(scope, prog){
+function t1ChipBars(scope, prog, flatBtn){
   const f = t1state, gift = t1IsGift(prog), lbl = gift ? T1_ST_LABEL_GIFT : T1_ST_LABEL;
   const stChip = (st,label)=>{
     const cnt = st ? scope.filter(r=>t1St(r)===st).length : scope.length;
@@ -1302,17 +1302,20 @@ function t1ChipBars(scope, prog){
   const tdChips = `<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Tiến độ (TH ÷ CT nền):</span>${tdChip('rot','🔻 Rớt tiến độ','Thực hiện/chỉ tiêu nền dưới nhịp thời gian ('+DATA.meta.nhip+'%)')}${tdChip('dat','✅ Đạt tiến độ','Từ nhịp thời gian ('+DATA.meta.nhip+'%) đến dưới 100% chỉ tiêu nền')}${tdChip('vuot','🚀 Vượt tiến độ','Đã đạt từ 100% chỉ tiêu nền trở lên')}</div>`;
   const p70N = scope.filter(t1P70).length;
   const p70Chip = `<button class="chip${f.p70?' active':''}" title="CH có MTD Tea365 ≥ 50% mốc 1.700.000đ (≥ 850.000đ, gồm cả CH đã đạt mốc) mà CHƯA đăng ký Dnl đồng hồ Tea365" onclick="window.__t1p70F(${f.p70?'false':'true'})">📈 Mua ≥50% mốc 1tr7 · chưa ĐK Dnl (${fmt(p70N)})</button>`;
-  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+  const mbsOrder = (t1Group==='mbs' && t1IsMbs(prog));
+  const rowSt = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Trạng thái:</span>
       <div class="chips" style="margin:0">${stChip(null,'Tất cả')}${stList.map(s=>stChip(s,lbl[s])).join('')}</div>
       ${prog==='bev'?`<div class="chips" style="margin:0 0 0 auto">${p70Chip}<span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-left:8px">Dnl đồng hồ Tea365:</span>${dnlChip}</div>`:''}
       ${t1IsMbs(prog)?tdChips:''}
       ${t1IsTdc(prog)?`<div class="chips" style="margin:0 0 0 auto"><span class="small" style="color:var(--sub);font-weight:600;align-self:center;margin-right:8px">Dnl TDC:</span>${dnlChipTdc}</div>`:''}
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+    </div>`;
+  const rowVt = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       <span class="small" style="color:var(--sub);font-weight:600">Viếng thăm:</span>
-      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>${t1Group==='mbs'?'<span class="small" style="color:var(--sub)">☑ tick chọn nhiều thứ để xem / in</span>':''}
-    </div>${t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t10','t50','t200'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t10'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 10tr đến dưới 50tr':g==='t50'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 50tr đến dưới 200tr':g==='t200'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 200tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:''}`;
+      <div class="chips" style="margin:0">${vtChip(null,'Tất cả')}${VISIT_DAYS.map(d=>vtChip(d,d)).join('')}</div>${t1Group==='mbs'?'<span class="small" style="color:var(--sub)" title="Tick chọn nhiều thứ để xem / in">☑ tick nhiều thứ</span>':''}${(mbsOrder && flatBtn)?`<span style="margin-left:auto">${flatBtn}</span>`:''}
+    </div>`;
+  const rowGrp = t1IsMbs(prog)?`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px"><span class="small" style="color:var(--sub);font-weight:600">Nhóm CH:</span><div class="chips" style="margin:0">${[null,'le','vip35','vipsi','t10','t50','t200'].map(g=>`<button class="chip${f.grp===g?' active':''}" title="${g==='t10'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 10tr đến dưới 50tr':g==='t50'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 50tr đến dưới 200tr':g==='t200'?'Chỉ tiêu nền của CH = Mức 1 (95% nền tháng) từ 200tr trở lên':'Nhóm CH theo MCP (Type Outlet)'}" onclick="window.__t1grpF(${g===null?'null':`'${g}'`})">${g===null?'Tất cả':T1_GRP_LABEL[g]} (${fmt(g===null?scope.length:scope.filter(r=>t1GrpOk(r,g)).length)})</button>`).join('')}</div></div>`:'';
+  return mbsOrder ? (rowVt + rowGrp + rowSt) : (rowSt + rowVt + rowGrp);
 }
 // ===== v48 (10/10): BẢNG TỔNG HỢP MỌI CT GẮN KẾT THEO TỪNG CH (cuối Tab) =====
 let T1SUM_CACHE = null;
@@ -1948,14 +1951,16 @@ function renderTab1Body(){
     const agg = !f.ss
       ? t1AggTable(rows, 'ss', prog, SSID_TH, null, 'ss')
       : t1AggTable(rows, 'ddkd', prog, '<th>ĐDKD</th>', null, 'ddkd');
-    inner = `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t1', ()=>renderTab1Body())}<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem thẳng danh sách CH (${fmt(rows.length)})</button></div>${f.ss?'':topfKpiBar('t1', t1KpiDefs(prog))}${agg}`;
+    inner = (t1Group==='mbs')
+      ? agg
+      : `<div style="display:flex;justify-content:${f.ss?'flex-end':'space-between'};align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">${f.ss?'':topfChips('t1', ()=>renderTab1Body())}<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem thẳng danh sách CH (${fmt(rows.length)})</button></div>${f.ss?'':topfKpiBar('t1', t1KpiDefs(prog))}${agg}`;
   }
   // v9 (04/10/2026): đổi chỗ khối chọn chương trình <-> khối KPI: KPI -> banner ngày -> chọn CT -> bộ lọc
   // v48 (10/10): bộ lọc SS/ĐDKD lên TRÊN hàng chọn CT nhỏ; thêm bảng tổng hợp mọi CT gắn kết theo CH ở cuối
   body.innerHTML = `${t1KpiRow(rows, prog)}
     ${t1FilterBar(prog)}
     ${t1ProgBar()}
-    <div class="card">${crumbHtml}${t1ChipBars(scope, prog)}${inner}</div>
+    <div class="card">${crumbHtml}${t1ChipBars(scope, prog, (!showCh ? `<button class="btn-clear" onclick="window.__t1flat(true)">📋 Xem DS CH (${fmt(rows.length)})</button>` : ''))}${inner}</div>
     ${t1CafeCtCard(rows, prog)}
     ${t1SummaryCard()}
     ${t1NoteBox(prog)}
